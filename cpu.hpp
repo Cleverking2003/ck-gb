@@ -9,13 +9,19 @@ public:
 private:
     bool exec_cb();
 
-    void inc8(unsigned char& val);
-    void inc16(unsigned short& val);
-    void dec8(unsigned char& val);
-    void dec16(unsigned short& val);
-    void add8(unsigned char& val, unsigned char& val2);
-    void add16(unsigned short& val, unsigned short& val2);
-    void swap(unsigned char& val);
+    void inc(unsigned char&);
+    void dec(unsigned char&);
+    void add(unsigned char&, unsigned char);
+    void adc(unsigned char&, unsigned char);
+    void sub(unsigned char&, unsigned char);
+    void sbc(unsigned char&, unsigned char);
+    void log_and(unsigned char);
+    void log_or(unsigned char);
+    void log_xor(unsigned char);
+    void cp(unsigned char);
+    void push(unsigned short);
+    void pop(unsigned short&);
+    void swap(unsigned char&);
 
     Emulator* m_emul;
     unsigned short pc { 0x100 };
