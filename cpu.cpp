@@ -1,5 +1,6 @@
 #include "cpu.hpp"
 #include "emul.hpp"
+#include "ops.h"
 #include <iostream>
 
 void CPU::inc(unsigned char& val) {
@@ -118,15 +119,17 @@ void CPU::set(unsigned char& val, unsigned char bit) {
 }
 
 bool CPU::exec() {
-    unsigned char op = m_emul->read8(pc++);
+    unsigned char op = m_emul->read8(pc), 
+    d8 = m_emul->read8(pc + 1);
+    unsigned short d16 = m_emul->read16(pc + 1);
+    bool jump = false;
     switch (op) {
     case 0x00:
         std::cout << "nop" << '\n';
         break;
     case 0x01:
-        std::cout << "ld bc, " << std::hex << (unsigned)m_emul->read16(pc) << '\n';
-        regs.bc = m_emul->read16(pc);
-        pc += 2;
+        std::cout << "ld bc, " << std::hex << d16 << '\n';
+        regs.bc = d16;
         break;
     case 0x03:
         std::cout << "inc bc\n";
@@ -137,12 +140,12 @@ bool CPU::exec() {
         inc(regs.b);
         break;
     case 0x05:
-        dec(regs.b);
         std::cout << "dec b" << '\n';
+        dec(regs.b);
         break;
     case 0x06:
-        regs.b = m_emul->read8(pc++);
-        std::cout << "ld b, " << std::hex << (unsigned)regs.b << '\n';
+        std::cout << "ld b, " << std::hex << (unsigned)d8 << '\n';
+        regs.b = d8;
         break;
     case 0x07:
         std::cout << "rlca\n";
@@ -150,25 +153,24 @@ bool CPU::exec() {
         regs.flags.z = 0;
         break;
     case 0x0b:
-        regs.bc--;
         std::cout << "dec bc" << '\n';
+        regs.bc--;
         break;
     case 0x0c:
-        inc(regs.c);
         std::cout << "inc c" << '\n';
+        inc(regs.c);
         break;
     case 0x0d:
-        dec(regs.c);
         std::cout << "dec c" << '\n';
+        dec(regs.c);
         break;
     case 0x0e:
-        regs.c = m_emul->read8(pc++);
-        std::cout << "ld c, " << std::hex << (unsigned)regs.c << '\n';
+        std::cout << "ld c, " << std::hex << (unsigned)d8 << '\n';
+        regs.c = d8;
         break;
     case 0x11:
-        std::cout << "ld de, " << m_emul->read16(pc) << '\n';
-        regs.de = m_emul->read16(pc);
-        pc += 2;
+        std::cout << "ld de, " << d16 << '\n';
+        regs.de = d16;
         break;
     case 0x12:
         std::cout << "ld (de), a\n";
@@ -179,12 +181,13 @@ bool CPU::exec() {
         regs.de++;
         break;
     case 0x16:
-        regs.d = m_emul->read8(pc++);
-        std::cout << "ld d, " << std::hex << (unsigned)regs.d << '\n';
+        std::cout << "ld d, " << std::hex << (unsigned)d8 << '\n';
+        regs.d = d8;
         break;
     case 0x18:
-        std::cout << "jr " << m_emul->read8(pc) << '\n';
-        pc += (signed char)m_emul->read8(pc);
+        std::cout << "jr " << (unsigned)d8 << '\n';
+        pc += (signed char)d8;
+        //jump = true;
         break;
     case 0x19: {
         std::cout << "add hl, de\n";
@@ -204,14 +207,15 @@ bool CPU::exec() {
         inc(regs.e);
         break;
     case 0x20:
-        std::cout << "jr nz " << std::hex << (signed)m_emul->read8(pc) << '\n';
-        if (!regs.flags.z) pc += (signed char)m_emul->read8(pc++);
-        else pc++;
+        std::cout << "jr nz " << std::hex << (signed)d8 << '\n';
+        if (!regs.flags.z) {
+            pc += (signed char)d8;
+            //jump = true;
+        }
         break;
     case 0x21:
-        regs.hl = m_emul->read16(pc);
-        pc += 2;
-        std::cout << "ld hl, " << std::hex << (unsigned)regs.hl << '\n';
+        std::cout << "ld hl, " << std::hex << (unsigned)d16 << '\n';
+        regs.hl = d16;
         break;
     case 0x22:
         std::cout << "ld (hl+), a\n";
@@ -222,9 +226,11 @@ bool CPU::exec() {
         regs.hl++;
         break;
     case 0x28:
-        std::cout << "jr z, " << (unsigned)m_emul->read8(pc) << '\n';
-        if (regs.flags.z) pc += (signed char)m_emul->read8(pc++);
-        else pc++;
+        std::cout << "jr z, " << (unsigned)d8 << '\n';
+        if (regs.flags.z) {
+            pc += (signed char)d8;
+            //jump = true;
+        }
         break;
     case 0x2a:
         std::cout << "ld a, (hl+)\n";
@@ -236,21 +242,20 @@ bool CPU::exec() {
         regs.flags.n = regs.flags.h = 1;
         break;
     case 0x31:
-        std::cout << "ld sp, " << std::hex << (unsigned)m_emul->read16(pc);
-        sp = m_emul->read16(pc);
-        pc += 2;
+        std::cout << "ld sp, " << std::hex << d16 << '\n';
+        sp = d16;
         break;
     case 0x32:
         m_emul->write8(regs.hl--, regs.a);
         std::cout << "ld (hl-), a\n";
         break;
     case 0x36:
-        std::cout << "ld (hl), " << std::hex << (unsigned)m_emul->read8(pc) << '\n';
-        m_emul->write8(regs.hl, m_emul->read8(pc++));
+        std::cout << "ld (hl), " << std::hex << (unsigned)d8 << '\n';
+        m_emul->write8(regs.hl, d8);
         break;
     case 0x3e:
-        regs.a = m_emul->read8(pc++);
-        std::cout << "ld a, " << std::hex << (unsigned)regs.a << '\n';
+        std::cout << "ld a, " << std::hex << (unsigned)d8 << '\n';
+        regs.a = d8;
         break;
     case 0x47:
         std::cout << "ld b, a\n";
@@ -321,8 +326,9 @@ bool CPU::exec() {
         pop(regs.bc);
         break;
     case 0xc3:
-        pc = m_emul->read16(pc);
+        pc = d16;
         std::cout << "jp " << std::hex << pc << '\n';
+        jump = true;
         break;
     case 0xc5:
         std::cout << "push bc\n";
@@ -330,23 +336,30 @@ bool CPU::exec() {
         break;
     case 0xc8:
         std::cout << "ret z\n";
-        if (regs.flags.z) pop(pc);
+        if (regs.flags.z) {
+            pop(pc);
+            jump = true;
+        }
         break;
     case 0xc9:
         std::cout << "ret\n";
         pop(pc);
+        jump = true;
         break;
     case 0xca:
-        std::cout << "jp z, " << m_emul->read16(pc) << '\n';
-        if (regs.flags.z) pc = m_emul->read16(pc);
-        else pc += 2;
+        std::cout << "jp z, " << d16 << '\n';
+        if (regs.flags.z) {
+            pc = m_emul->read16(pc);
+            jump = true;
+        }
         break;
     case 0xcb:
         return exec_cb();
     case 0xcd:
-        std::cout << "call " << std::hex << (unsigned)m_emul->read16(pc) << '\n';
-        push(pc + 2);
-        pc = m_emul->read16(pc);
+        std::cout << "call " << std::hex << (unsigned)d16 << '\n';
+        push(pc + op_len[op]);
+        pc = d16;
+        jump = true;
         break;
     case 0xd1:
         std::cout << "pop de\n";
@@ -357,8 +370,8 @@ bool CPU::exec() {
         push(regs.de);
         break;
     case 0xe0:
-        std::cout << "ldh (" << std::hex << (unsigned)m_emul->read8(pc) << "), a\n";
-        m_emul->write8(0xff00 + m_emul->read8(pc++), regs.a);
+        std::cout << "ldh (" << std::hex << (unsigned)d8 << "), a\n";
+        m_emul->write8(0xff00 + d8, regs.a);
         break;
     case 0xe1:
         std::cout << "pop hl\n";
@@ -373,61 +386,62 @@ bool CPU::exec() {
         push(regs.hl);
         break;
     case 0xe6:
-        std::cout << "and " << std::hex << (unsigned)m_emul->read8(pc) << "\n";
-        log_and(m_emul->read8(pc++));
+        std::cout << "and " << std::hex << (unsigned)d8 << "\n";
+        log_and(d8);
         break;
     case 0xe9:
         std::cout << "jp hl\n";
         pc = regs.hl;
+        jump = true;
         break;
     case 0xea:
-        std::cout << "ld (" << std::hex << (unsigned)m_emul->read16(pc) << "), a\n";
-        m_emul->write8(m_emul->read16(pc), regs.a);
-        pc += 2;
+        std::cout << "ld (" << std::hex << (unsigned)d16 << "), a\n";
+        m_emul->write8(d16, regs.a);
         break;
     case 0xef:
         std::cout << "rst 28\n";
-        push(pc);
+        push(pc + op_len[op]);
         pc = 0x28;
+        jump = true;
         break;
     case 0xf0:
-        std::cout << "ldh a, (" << std::hex << (unsigned)m_emul->read8(pc) << ")\n";
-        regs.a = m_emul->read8(0xff00 + m_emul->read8(pc++));
+        std::cout << "ldh a, (" << std::hex << (unsigned)d8 << ")\n";
+        regs.a = m_emul->read8(0xff00 + d8);
         break;
     case 0xf1:
         std::cout << "pop af\n";
         pop(regs.af);
         break;
     case 0xf3:
-        m_interrupts_enabled = false;
         std::cout << "di" << '\n';
+        m_interrupts_enabled = false;
         break;
     case 0xf5:
         std::cout << "push af\n";
         push(regs.af);
         break;
     case 0xfa:
-        std::cout << "ld a, (" << m_emul->read16(pc) << ")\n";
-        regs.a = m_emul->read8(m_emul->read16(pc));
-        pc += 2;
+        std::cout << "ld a, (" << d16 << ")\n";
+        regs.a = m_emul->read8(d16);
         break;
     case 0xfb:
-        m_interrupts_enabled = true;
         std::cout << "ei" << '\n';
+        m_interrupts_enabled = true;
         break;
     case 0xfe:
-        std::cout << "cp " << (unsigned)m_emul->read8(pc) << '\n';
-        cp(m_emul->read8(pc++));
+        std::cout << "cp " << (unsigned)d8 << '\n';
+        cp(d8);
         break;
     default:
         std::cout << "Unimplemented opcode: " << std::hex << (unsigned)op << '\n';
         return false;
     }
+    if (!jump) pc += op_len[op];
     return true;
 }
 
 bool CPU::exec_cb() {
-    unsigned char op = m_emul->read8(pc++);
+    unsigned char op = m_emul->read8(pc + 1);
     switch (op) {
     case 0x37:
         std::cout << "swap a\n";
@@ -441,5 +455,6 @@ bool CPU::exec_cb() {
         std::cout << "Unimplemented CB opcode: " << std::hex << (unsigned)op << '\n';
         return false;
     }
+    pc += 2;
     return true;
 }
