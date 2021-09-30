@@ -21,6 +21,8 @@ private:
     void cp(unsigned char);
     void rlc(unsigned char&);
     void rrc(unsigned char&);
+    void res(unsigned char&, unsigned char);
+    void set(unsigned char&, unsigned char);
     void push(unsigned short);
     void pop(unsigned short&);
     void swap(unsigned char&);
