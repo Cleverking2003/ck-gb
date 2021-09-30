@@ -19,6 +19,8 @@ private:
     void log_or(unsigned char);
     void log_xor(unsigned char);
     void cp(unsigned char);
+    void rlc(unsigned char&);
+    void rrc(unsigned char&);
     void push(unsigned short);
     void pop(unsigned short&);
     void swap(unsigned char&);
@@ -30,7 +32,6 @@ private:
         union {
             unsigned short af;
             struct {
-                unsigned char a;
                 struct {
                     bool z : 1;
                     bool n : 1;
@@ -38,24 +39,25 @@ private:
                     bool c : 1;
                     int pad : 4;
                 } flags;
+                unsigned char a;
             };
         };
         union {
             unsigned short bc;
             struct {
-                unsigned char b, c;
+                unsigned char c, b;
             };
         };
         union {
             unsigned short de;
             struct {
-                unsigned char d, e;
+                unsigned char e, d;
             };
         };
         union {
             unsigned short hl;
             struct {
-                unsigned char h, l;
+                unsigned char l, h;
             };
         };
     } regs { 0 };
