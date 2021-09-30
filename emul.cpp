@@ -8,7 +8,9 @@ unsigned char Emulator::read8(int addr) {
     case 0xc000 ... 0xdfff:
         return m_wram[addr - 0xc000];
     case 0xff44:
-        return 0x94;
+        m_ly++;
+        if (m_ly == 154) m_ly = 0;
+        return m_ly;
     case 0xff80 ... 0xfffe:
         return m_hram[addr - 0xff80];
     default:

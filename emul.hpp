@@ -16,4 +16,5 @@ private:
     CPU m_cpu;
     unsigned char m_wram[0x2000] { 0 };
     unsigned char m_hram[0x7f] { 0 };
+    unsigned char m_ly { 0 };
 };
