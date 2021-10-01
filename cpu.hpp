@@ -5,9 +5,9 @@ class Emulator;
 class CPU {
 public:
     CPU(Emulator* emul) : m_emul(emul) {}
-    bool exec();
+    int exec();
 private:
-    bool exec_cb();
+    int exec_cb();
 
     void inc(unsigned char&);
     void dec(unsigned char&);

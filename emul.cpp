@@ -7,6 +7,8 @@ unsigned char Emulator::read8(int addr) {
         return m_rom.read8(addr);
     case 0xc000 ... 0xdfff:
         return m_wram[addr - 0xc000];
+    case 0xff00:
+        return 0x0f;
     case 0xff44:
         m_ly++;
         if (m_ly == 154) m_ly = 0;
@@ -46,5 +48,5 @@ void Emulator::write16(int addr, unsigned short val) {
 }
 
 bool Emulator::exec() {
-    return m_cpu.exec();
+    return m_cpu.exec() != 0;
 }

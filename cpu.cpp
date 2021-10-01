@@ -1,6 +1,6 @@
 #include "cpu.hpp"
 #include "emul.hpp"
-#include "ops.h"
+#include "ops.hpp"
 #include <iostream>
 
 void CPU::inc(unsigned char& val) {
@@ -93,7 +93,7 @@ void CPU::pop(unsigned short& val) {
 }
 
 void CPU::rlc(unsigned char& val) {
-    bool bit = val & 0x80;
+    unsigned char bit = (val & 0x80) ? 1 : 0;
     val <<= 1;
     val |= regs.flags.c;
     regs.flags.c = bit;
@@ -102,7 +102,7 @@ void CPU::rlc(unsigned char& val) {
 }
 
 void CPU::rrc(unsigned char& val) {
-    bool bit = val & 1;
+    unsigned char bit = val & 1;
     val >>= 1;
     val |= regs.flags.c << 7;
     regs.flags.c = bit;
@@ -124,12 +124,13 @@ void print_op(unsigned char op, unsigned short data = 0) {
     printf("\n");
 }
 
-bool CPU::exec() {
+int CPU::exec() {
     unsigned char op = m_emul->read8(pc), 
     d8 = m_emul->read8(pc + 1);
     unsigned short d16 = m_emul->read16(pc + 1);
     unsigned short print_data = 0;
     bool jump = false;
+    int jump_cycles = 0;
     switch (op) {
     case 0x00:
         break;
@@ -182,7 +183,7 @@ bool CPU::exec() {
         regs.d = d8;
         break;
     case 0x18:
-        print_data = pc + (signed char)d8;
+        print_data = pc + (signed char)d8 + op_len[op];
         pc += (signed char)d8;
         break;
     case 0x19: {
@@ -200,9 +201,10 @@ bool CPU::exec() {
         inc(regs.e);
         break;
     case 0x20:
-        print_data = pc + (signed char)d8;
+        print_data = pc + (signed char)d8 + op_len[op];
         if (!regs.flags.z) {
             pc += (signed char)d8;
+            jump_cycles = 4;
         }
         break;
     case 0x21:
@@ -216,9 +218,10 @@ bool CPU::exec() {
         regs.hl++;
         break;
     case 0x28:
-        print_data = pc + (signed char)d8;
+        print_data = pc + (signed char)d8 + op_len[op];
         if (regs.flags.z) {
             pc += (signed char)d8;
+            jump_cycles = 4;
         }
         break;
     case 0x2a:
@@ -237,6 +240,12 @@ bool CPU::exec() {
         break;
     case 0x32:
         m_emul->write8(regs.hl--, regs.a);
+        break;
+    case 0x35:
+        m_emul->write8(regs.hl, m_emul->read8(regs.hl) - 1);
+        regs.flags.z = (m_emul->read8(regs.hl) == 0);
+        regs.flags.n = 1;
+        regs.flags.h = (m_emul->read8(regs.hl) & 0xf) > 9;
         break;
     case 0x36:
         print_data = d8;
@@ -315,6 +324,7 @@ bool CPU::exec() {
         if (regs.flags.z) {
             pop(pc);
             jump = true;
+            jump_cycles = 12;
         }
         break;
     case 0xc9:
@@ -326,6 +336,7 @@ bool CPU::exec() {
         if (regs.flags.z) {
             pc = d16;
             jump = true;
+            jump_cycles = 4;
         }
         break;
     case 0xcb:
@@ -398,14 +409,14 @@ bool CPU::exec() {
         break;
     default:
         std::cout << "Unimplemented opcode: " << std::hex << (unsigned)op << '\n';
-        return false;
+        return 0;
     }
     if (!jump) pc += op_len[op];
     print_op(op, print_data);
-    return true;
+    return op_cycles[op] + jump_cycles;
 }
 
-bool CPU::exec_cb() {
+int CPU::exec_cb() {
     unsigned char op = m_emul->read8(pc + 1);
     switch (op) {
     case 0x37:
@@ -418,8 +429,8 @@ bool CPU::exec_cb() {
         break;
     default:
         std::cout << "Unimplemented CB opcode: " << std::hex << (unsigned)op << '\n';
-        return false;
+        return 0;
     }
     pc += 2;
-    return true;
+    return cb_cycles[op & 0xf];
 }
