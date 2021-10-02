@@ -1,11 +1,12 @@
 #pragma once
 
 #include "cpu.hpp"
+#include "ppu.hpp"
 #include "rom.hpp"
 
 class Emulator {
 public:
-    Emulator(const char* game) : m_rom(game), m_cpu(this) {}
+    Emulator(const char* game) : m_rom(game), m_cpu(this), m_ppu(this) {}
     unsigned char read8(int addr);
     unsigned short read16(int addr);
     void write8(int addr, unsigned char val);
@@ -14,7 +15,7 @@ public:
 private:
     ROM m_rom;
     CPU m_cpu;
+    PPU m_ppu;
     unsigned char m_wram[0x2000] { 0 };
     unsigned char m_hram[0x7f] { 0 };
-    unsigned char m_ly { 0 };
 };

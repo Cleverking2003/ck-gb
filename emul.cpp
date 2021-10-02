@@ -10,9 +10,7 @@ unsigned char Emulator::read8(int addr) {
     case 0xff00:
         return 0x0f;
     case 0xff44:
-        m_ly++;
-        if (m_ly == 154) m_ly = 0;
-        return m_ly;
+        return m_ppu.ly();
     case 0xff80 ... 0xfffe:
         return m_hram[addr - 0xff80];
     default:
@@ -48,5 +46,7 @@ void Emulator::write16(int addr, unsigned short val) {
 }
 
 bool Emulator::exec() {
-    return m_cpu.exec() != 0;
+    int cycles = m_cpu.exec();
+    m_ppu.exec(cycles);
+    return cycles != 0;
 }
