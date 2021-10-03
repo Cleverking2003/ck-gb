@@ -6,6 +6,7 @@ class CPU {
 public:
     CPU(Emulator* emul) : m_emul(emul) {}
     int exec();
+    void jump_to(unsigned short addr) { push(pc); pc = addr; }
 private:
     int exec_cb();
 
@@ -63,5 +64,4 @@ private:
             };
         };
     } regs { 0 };
-    bool m_interrupts_enabled { true };
 };

@@ -391,7 +391,7 @@ int CPU::exec() {
         pop(regs.af);
         break;
     case 0xf3:
-        m_interrupts_enabled = false;
+        m_emul->disable_ints();
         break;
     case 0xf5:
         push(regs.af);
@@ -401,7 +401,7 @@ int CPU::exec() {
         regs.a = m_emul->read8(d16);
         break;
     case 0xfb:
-        m_interrupts_enabled = true;
+        m_emul->enable_ints();
         break;
     case 0xfe:
         print_data = d8;

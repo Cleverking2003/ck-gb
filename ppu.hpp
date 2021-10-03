@@ -5,8 +5,9 @@ class Emulator;
 class PPU {
 public:
     PPU(Emulator* emul) : m_emul(emul) {}
+    unsigned char read8(int addr);
+    void write8(int addr, unsigned char val);
     void exec(int cycles);
-    int ly() { return m_ly; }
 private:
     Emulator* m_emul;
     union {
