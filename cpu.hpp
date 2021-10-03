@@ -27,6 +27,8 @@ private:
     void push(unsigned short);
     void pop(unsigned short&);
     void swap(unsigned char&);
+    void sla(unsigned char&);
+    void bit(unsigned char, unsigned char);
 
     Emulator* m_emul;
     unsigned short pc { 0x100 };
