@@ -5,8 +5,12 @@ unsigned char Emulator::read8(int addr) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
         return m_rom.read8(addr);
+    case 0x8000 ... 0x9fff:
+        return m_ppu.read8(addr);
     case 0xc000 ... 0xdfff:
         return m_wram[addr - 0xc000];
+    case 0xfe00 ... 0xfe9f:
+        return m_ppu.read8(addr);
     case 0xff00:
         return 0x0f;
     case 0xff0f:
@@ -32,8 +36,14 @@ void Emulator::write8(int addr, unsigned char val) {
     case 0x0000 ... 0x7fff:
         m_rom.write8(addr, val);
         break;
+    case 0x8000 ... 0x9fff:
+        m_ppu.write8(addr, val);
+        break;
     case 0xc000 ... 0xdfff:
         m_wram[addr - 0xc000] = val;
+        break;
+    case 0xfe00 ... 0xfe9f:
+        m_ppu.write8(addr, val);
         break;
     case 0xff0f:
         m_if = val;

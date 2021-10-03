@@ -4,6 +4,16 @@
 
 unsigned char PPU::read8(int addr) {
     switch(addr) {
+    case 0x8000 ... 0x8fff:
+        return m_vram_tiles1[addr - 0x8000];
+    case 0x9000 ... 0x97ff:
+        return m_vram_tiles1[addr - 0x9000];
+    case 0x9800 ... 0x9bff:
+        return m_vram_tiles1[addr - 0x9800];
+    case 0x9c00 ... 0x9fff:
+        return m_vram_tiles1[addr - 0x9c00];
+    case 0xfe00 ... 0xfe9f:
+        return m_oam[addr - 0xfe00];
     case 0xff41:
         return m_stat.stat;
     case 0xff44:
@@ -16,6 +26,21 @@ unsigned char PPU::read8(int addr) {
 
 void PPU::write8(int addr, unsigned char val) {
     switch(addr) {
+    case 0x8000 ... 0x8fff:
+        m_vram_tiles1[addr - 0x8000] = val;
+        break;
+    case 0x9000 ... 0x97ff:
+        m_vram_tiles1[addr - 0x9000] = val;
+        break;
+    case 0x9800 ... 0x9bff:
+        m_vram_tiles1[addr - 0x9800] = val;
+        break;
+    case 0x9c00 ... 0x9fff:
+        m_vram_tiles1[addr - 0x9c00] = val;
+        break;
+    case 0xfe00 ... 0xfe9f:
+        m_oam[addr - 0xfe00] = val;
+        break;
     case 0xff41: {
         auto old_stat = m_stat.stat;
         m_stat.stat = (val & 0xf8) | (old_stat & 0x7);

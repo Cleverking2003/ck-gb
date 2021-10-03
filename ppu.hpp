@@ -10,6 +10,11 @@ public:
     void exec(int cycles);
 private:
     Emulator* m_emul;
+    unsigned char m_vram_tiles1[0x1000] { 0 };
+    unsigned char m_vram_tiles2[0x800] { 0 };
+    unsigned char m_vram_bg_map1[0x400] { 0 };
+    unsigned char m_vram_bg_map2[0x400] { 0 };
+    unsigned char m_oam[0xa0] { 0 };
     union {
         unsigned char stat;
         struct {
