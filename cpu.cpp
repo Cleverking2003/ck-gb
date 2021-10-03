@@ -241,6 +241,12 @@ int CPU::exec() {
     case 0x32:
         m_emul->write8(regs.hl--, regs.a);
         break;
+    case 0x34:
+        m_emul->write8(regs.hl, m_emul->read8(regs.hl) + 1);
+        regs.flags.z = (m_emul->read8(regs.hl) == 0);
+        regs.flags.n = 0;
+        regs.flags.h = (m_emul->read8(regs.hl) & 0xf) > 9;
+        break;
     case 0x35:
         m_emul->write8(regs.hl, m_emul->read8(regs.hl) - 1);
         regs.flags.z = (m_emul->read8(regs.hl) == 0);
@@ -250,6 +256,12 @@ int CPU::exec() {
     case 0x36:
         print_data = d8;
         m_emul->write8(regs.hl, d8);
+        break;
+    case 0x3c:
+        inc(regs.a);
+        break;
+    case 0x3d:
+        dec(regs.a);
         break;
     case 0x3e:
         print_data = d8;
@@ -309,6 +321,13 @@ int CPU::exec() {
     case 0xb1:
         log_or(regs.c);
         break;
+    case 0xc0:
+        if (!regs.flags.z) {
+            pop(pc);
+            jump = true;
+            jump_cycles = 12;
+        }
+        break;
     case 0xc1:
         pop(regs.bc);
         break;
@@ -352,6 +371,11 @@ int CPU::exec() {
         break;
     case 0xd5:
         push(regs.de);
+        break;
+    case 0xd9:
+        m_emul->enable_ints();
+        pop(pc);
+        jump = true;
         break;
     case 0xe0:
         print_data = d8;
