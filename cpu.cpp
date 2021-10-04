@@ -139,6 +139,7 @@ void CPU::srl(unsigned char& val) {
 }
 
 void print_op(unsigned char op, unsigned short data = 0) {
+    return;
     if (op == 0xcb) printf(cb_format[data]);
     else printf(op_format[op], data);
     printf("\n");
@@ -502,6 +503,9 @@ int CPU::exec() {
     case 0x80:
         add(regs.a, regs.b);
         break;
+    case 0x82:
+        add(regs.a, regs.d);
+        break;
     case 0x85:
         add(regs.a, regs.l);
         break;
@@ -728,6 +732,9 @@ int CPU::exec_cb() {
     case 0x40:
         bit(regs.b, 0);
         break;
+    case 0x41:
+        bit(regs.c, 0);
+        break;
     case 0x47:
         bit(regs.a, 0);
         break;
@@ -758,8 +765,20 @@ int CPU::exec_cb() {
     case 0x6f:
         bit(regs.a, 5);
         break;
+    case 0x70:
+        bit(regs.b, 6);
+        break;
+    case 0x71:
+        bit(regs.c, 6);
+        break;
     case 0x77:
         bit(regs.a, 6);
+        break;
+    case 0x78:
+        bit(regs.b, 7);
+        break;
+    case 0x79:
+        bit(regs.c, 7);
         break;
     case 0x7e:
         bit(m_emul->read8(regs.hl), 7);
@@ -777,7 +796,7 @@ int CPU::exec_cb() {
         res(regs.a, 0);
         break;
     default:
-        std::cout << "Unimplemented CB opcode: " << std::hex << (unsigned)op << '\n';
+        std::cout << "Unimplemented CB opcode: " << std::hex << (unsigned)op << " at " << pc << '\n';
         return 0;
     }
     print_op(0xcb, op);
