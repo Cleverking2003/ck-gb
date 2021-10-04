@@ -228,8 +228,14 @@ int CPU::exec() {
     case 0x1a:
         regs.a = m_emul->read8(regs.de);
         break;
+    case 0x1b:
+        regs.de--;
+        break;
     case 0x1c:
         inc(regs.e);
+        break;
+    case 0x1d:
+        dec(regs.e);
         break;
     case 0x1e:
         print_data = d8;
@@ -256,6 +262,76 @@ int CPU::exec() {
         print_data = d8;
         regs.h = d8;
         break;
+    case 0x27:
+        if (!regs.flags.n) {
+            if (!regs.flags.c && !regs.flags.h && (regs.a & 0xf0 < 0xa0) && (regs.a && 0xf < 9)) {
+                regs.flags.c = 0;
+                break;
+            }
+            if (!regs.flags.c) {
+                if (!regs.flags.h) {
+                    if (regs.a & 0xf0 < 0xa0) {
+                        if (regs.a & 0xf > 9) {
+                            regs.a += 0x06;
+                            regs.flags.c = 0;
+                        }
+                    }
+                    else {
+                        if (regs.a & 0xf > 9) {
+                            regs.a += 0x66;
+                        }
+                        else {
+                            regs.a += 0x60;
+                        }
+                        regs.flags.c = 1;
+                    }
+                }
+                else {
+                    if (regs.a & 0xf0 < 0xa0) {
+                        regs.a += 0x06;
+                        regs.flags.c = 0;
+                    }
+                    else {
+                        regs.a += 0x66;
+                        regs.flags.c = 1;
+                    }
+                }
+            }
+            else {
+                if (!regs.flags.h) {
+                    if (regs.a & 0xf > 9) {
+                        regs.a += 0x66;
+                    }
+                    else {
+                        regs.a += 0x60;
+                    }
+                    regs.flags.c = 1;
+                }
+                else {
+                    regs.a += 0x66;
+                    regs.flags.c = 1;
+                }
+            }
+        }
+        else {
+            if (!regs.flags.c && !regs.flags.h) {
+                regs.flags.c = 0;
+            }
+            else if (!regs.flags.c && regs.flags.h) {
+                regs.a += 0xfa;
+                regs.flags.c = 0;
+            }
+            else {
+                if (!regs.flags.h) {
+                    regs.a += 0xa0;
+                }
+                else {
+                    regs.a += 0x9a;
+                }
+                regs.flags.c = 1;
+            }
+        }
+        break;
     case 0x28:
         print_data = pc + (signed char)d8 + op_len[op];
         if (regs.flags.z) {
@@ -265,6 +341,9 @@ int CPU::exec() {
         break;
     case 0x2a:
         regs.a = m_emul->read8(regs.hl++);
+        break;
+    case 0x2b:
+        regs.hl--;
         break;
     case 0x2c:
         inc(regs.l);
@@ -279,6 +358,13 @@ int CPU::exec() {
     case 0x2f:
         regs.a ^= 0xff;
         regs.flags.n = regs.flags.h = 1;
+        break;
+    case 0x30:
+        print_data = pc + (signed char)d8 + op_len[op];
+        if (!regs.flags.c) {
+            pc += (signed char)d8;
+            jump_cycles = 4;
+        }
         break;
     case 0x31:
         print_data = d16;
@@ -302,6 +388,13 @@ int CPU::exec() {
     case 0x36:
         print_data = d8;
         m_emul->write8(regs.hl, d8);
+        break;
+    case 0x38:
+        print_data = pc + (signed char)d8 + op_len[op];
+        if (regs.flags.c) {
+            pc += (signed char)d8;
+            jump_cycles = 4;
+        }
         break;
     case 0x3a:
         regs.a = m_emul->read8(regs.hl--);
@@ -351,6 +444,9 @@ int CPU::exec() {
         break;
     case 0x60:
         regs.h = regs.b;
+        break;
+    case 0x61:
+        regs.h = regs.c;
         break;
     case 0x62:
         regs.h = regs.d;
@@ -418,6 +514,18 @@ int CPU::exec() {
     case 0x89:
         adc(regs.a, regs.c);
         break;
+    case 0x8e:
+        adc(regs.a, m_emul->read8(regs.hl));
+        break;
+    case 0x90:
+        sub(regs.a, regs.b);
+        break;
+    case 0x96:
+        sub(regs.a, m_emul->read8(regs.hl));
+        break;
+    case 0x99:
+        sbc(regs.a, regs.c);
+        break;
     case 0xa0:
         log_and(regs.b);
         break;
@@ -441,6 +549,9 @@ int CPU::exec() {
         break;
     case 0xb1:
         log_or(regs.c);
+        break;
+    case 0xb7:
+        log_or(regs.a);
         break;
     case 0xb8:
         cp(regs.b);
@@ -502,6 +613,13 @@ int CPU::exec() {
         pc = d16;
         jump = true;
         break;
+    case 0xd0:
+        if (!regs.flags.c) {
+            pop(pc);
+            jump = true;
+            jump_cycles = 12;
+        }
+        break;
     case 0xd1:
         pop(regs.de);
         break;
@@ -516,6 +634,10 @@ int CPU::exec() {
         m_emul->enable_ints();
         pop(pc);
         jump = true;
+        break;
+    case 0xde:
+        print_data = d8;
+        sbc(regs.a, d8);
         break;
     case 0xe0:
         print_data = d8;
@@ -541,6 +663,10 @@ int CPU::exec() {
     case 0xea:
         print_data = d16;
         m_emul->write8(d16, regs.a);
+        break;
+    case 0xee:
+        print_data = d8;
+        log_xor(d8);
         break;
     case 0xef:
         push(pc + op_len[op]);
@@ -576,7 +702,7 @@ int CPU::exec() {
         cp(d8);
         break;
     default:
-        std::cout << "Unimplemented opcode: " << std::hex << (unsigned)op << '\n';
+        std::cout << "Unimplemented opcode: " << std::hex << (unsigned)op << " at " << pc << '\n';
         return 0;
     }
     if (!jump) pc += op_len[op];
@@ -601,6 +727,9 @@ int CPU::exec_cb() {
         break;
     case 0x40:
         bit(regs.b, 0);
+        break;
+    case 0x47:
+        bit(regs.a, 0);
         break;
     case 0x48:
         bit(regs.b, 1);
