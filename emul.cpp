@@ -1,26 +1,39 @@
 #include "emul.hpp"
 #include <iostream>
 
+static Emulator* s_the;
+
+Emulator* Emulator::the() {
+    if (!s_the)
+        s_the = new Emulator;
+    return s_the;
+}
+
+bool Emulator::load(const char* game) { return s_the->m_rom.load(game); }
+void Emulator::unload() { s_the->m_rom.unload(); }
+void Emulator::enable_ints() { s_the->m_interrupts_enabled = true; }
+void Emulator::disable_ints() { s_the->m_interrupts_enabled = false; }
+
 unsigned char Emulator::read8(int addr) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
-        return m_rom.read8(addr);
+        return s_the->m_rom.read8(addr);
     case 0x8000 ... 0x9fff:
-        return m_ppu.read8(addr);
+        return s_the->m_ppu.read8(addr);
     case 0xc000 ... 0xdfff:
-        return m_wram[addr - 0xc000];
+        return s_the->m_wram[addr - 0xc000];
     case 0xfe00 ... 0xfe9f:
-        return m_ppu.read8(addr);
+        return s_the->m_ppu.read8(addr);
     case 0xff00:
         return 0x0f;
     case 0xff0f:
-        return m_if;
+        return s_the->m_if;
     case 0xff40 ... 0xff4b:
-        return m_ppu.read8(addr);
+        return s_the->m_ppu.read8(addr);
     case 0xff80 ... 0xfffe:
-        return m_hram[addr - 0xff80];
+        return s_the->m_hram[addr - 0xff80];
     case 0xffff:
-        return m_ie;
+        return s_the->m_ie;
     default:
         std::cout << "Unimplemented read from " << std::hex << addr << '\n';
         return 0;
@@ -34,28 +47,28 @@ unsigned short Emulator::read16(int addr) {
 void Emulator::write8(int addr, unsigned char val) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
-        m_rom.write8(addr, val);
+        s_the->m_rom.write8(addr, val);
         break;
     case 0x8000 ... 0x9fff:
-        m_ppu.write8(addr, val);
+        s_the->m_ppu.write8(addr, val);
         break;
     case 0xc000 ... 0xdfff:
-        m_wram[addr - 0xc000] = val;
+        s_the->m_wram[addr - 0xc000] = val;
         break;
     case 0xfe00 ... 0xfe9f:
-        m_ppu.write8(addr, val);
+        s_the->m_ppu.write8(addr, val);
         break;
     case 0xff0f:
-        m_if = val;
+        s_the->m_if = val;
         break;
     case 0xff40 ... 0xff4b:
-        m_ppu.write8(addr, val);
+        s_the->m_ppu.write8(addr, val);
         break;
     case 0xff80 ... 0xfffe:
-        m_hram[addr - 0xff80] = val;
+        s_the->m_hram[addr - 0xff80] = val;
         break;
     case 0xffff:
-        m_ie = val;
+        s_the->m_ie = val;
         break;
     default:
         std::cout << "Unimplemented write to " << std::hex << addr << '\n';
@@ -70,13 +83,13 @@ void Emulator::write16(int addr, unsigned short val) {
 
 bool Emulator::exec() {
     for (int i = 0; i < 5; i++) {
-        if (m_if & (1 << i)) {
+        if (s_the->m_if & (1 << i)) {
             raise_int(i);
             break;
         }
     }
-    int cycles = m_cpu.exec();
-    m_ppu.exec(cycles);
+    int cycles = s_the->m_cpu.exec();
+    s_the->m_ppu.exec(cycles);
     return cycles != 0;
 }
 
@@ -86,13 +99,13 @@ bool Emulator::exec() {
 // 3 = Serial
 // 4 = Joypad
 void Emulator::raise_int(int interrupt) {
-    if (m_ie & (1 << interrupt) && m_interrupts_enabled) {
+    if (s_the->m_ie & (1 << interrupt) && s_the->m_interrupts_enabled) {
         std::cout << "Executing interrupt " << interrupt << '\n';
-        m_interrupts_enabled = false;
-        m_if &= ~(1 << interrupt);
-        m_cpu.jump_to(0x40 + interrupt * 8);
+        s_the->m_interrupts_enabled = false;
+        s_the->m_if &= ~(1 << interrupt);
+        s_the->m_cpu.jump_to(0x40 + interrupt * 8);
     }
     else {
-        m_if |= (1 << interrupt);
+        s_the->m_if |= (1 << interrupt);
     }
 }

@@ -64,7 +64,7 @@ void PPU::exec(int cycles) {
     if (m_ly >= 144) {
         if (m_stat.mode != 1) {
             m_stat.mode = 1;
-            m_emul->raise_int(0);
+            Emulator::raise_int(0);
         }
     }
     else if (m_scanline_cycles < 80) {

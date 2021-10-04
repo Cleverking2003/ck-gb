@@ -6,7 +6,11 @@ int main(int argc, char** argv) {
         std::cout << "Usage: ck-gb <filename>\n";
         return 1;
     }
-    Emulator emul(argv[1]);
-    while (emul.exec());
+    Emulator::the();
+    if (!Emulator::load(argv[1])) {
+        std::cout << "Couldn't load the game\n";
+        return 1;
+    }
+    while (Emulator::exec());
     return 0;
 }

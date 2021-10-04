@@ -6,16 +6,23 @@
 
 class Emulator {
 public:
-    Emulator(const char* game) : m_rom(game), m_cpu(this), m_ppu(this) {}
-    unsigned char read8(int addr);
-    unsigned short read16(int addr);
-    void write8(int addr, unsigned char val);
-    void write16(int addr, unsigned short val);
-    void raise_int(int interrupt);
-    void enable_ints() { m_interrupts_enabled = true; }
-    void disable_ints() { m_interrupts_enabled = false; }
-    bool exec();
+    static Emulator* the();
+    static bool load(const char* game);
+    static void unload();
+    static unsigned char read8(int addr);
+    static unsigned short read16(int addr);
+    static void write8(int addr, unsigned char val);
+    static void write16(int addr, unsigned short val);
+    static void raise_int(int interrupt);
+    static void enable_ints();
+    static void disable_ints();
+    static bool exec();
 private:
+    Emulator() {}
+    Emulator(const Emulator&) = delete;
+    Emulator(const Emulator&&) = delete;
+    int operator=(const Emulator&) = delete;
+    int operator=(const Emulator&&) = delete;
     ROM m_rom;
     CPU m_cpu;
     PPU m_ppu;

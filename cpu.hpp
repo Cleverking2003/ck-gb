@@ -1,10 +1,7 @@
 #pragma once
 
-class Emulator;
-
 class CPU {
 public:
-    CPU(Emulator* emul) : m_emul(emul) {}
     int exec();
     void jump_to(unsigned short addr) { push(pc); pc = addr; }
 private:
@@ -31,7 +28,6 @@ private:
     void srl(unsigned char&);
     void bit(unsigned char, unsigned char);
 
-    Emulator* m_emul;
     unsigned short pc { 0x100 };
     unsigned short sp { 0 };
     struct {

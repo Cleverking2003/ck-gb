@@ -91,11 +91,11 @@ void CPU::sla(unsigned char& val) {
 
 void CPU::push(unsigned short val) {
     sp -= 2;
-    m_emul->write16(sp, val);
+    Emulator::write16(sp, val);
 }
 
 void CPU::pop(unsigned short& val) {
-    val = m_emul->read16(sp);
+    val = Emulator::read16(sp);
     sp += 2;
 }
 
@@ -139,16 +139,15 @@ void CPU::srl(unsigned char& val) {
 }
 
 void print_op(unsigned char op, unsigned short data = 0) {
-    return;
     if (op == 0xcb) printf(cb_format[data]);
     else printf(op_format[op], data);
     printf("\n");
 }
 
 int CPU::exec() {
-    unsigned char op = m_emul->read8(pc), 
-    d8 = m_emul->read8(pc + 1);
-    unsigned short d16 = m_emul->read16(pc + 1);
+    unsigned char op = Emulator::read8(pc), 
+    d8 = Emulator::read8(pc + 1);
+    unsigned short d16 = Emulator::read16(pc + 1);
     unsigned short print_data = 0;
     bool jump = false;
     int jump_cycles = 0;
@@ -185,7 +184,7 @@ int CPU::exec() {
         break;
     }
     case 0x0a:
-        regs.a = m_emul->read8(regs.bc);
+        regs.a = Emulator::read8(regs.bc);
         break;
     case 0x0b:
         regs.bc--;
@@ -205,7 +204,7 @@ int CPU::exec() {
         regs.de = d16;
         break;
     case 0x12:
-        m_emul->write8(regs.de, regs.a);
+        Emulator::write8(regs.de, regs.a);
         break;
     case 0x13:
         regs.de++;
@@ -227,7 +226,7 @@ int CPU::exec() {
         break;
     }
     case 0x1a:
-        regs.a = m_emul->read8(regs.de);
+        regs.a = Emulator::read8(regs.de);
         break;
     case 0x1b:
         regs.de--;
@@ -254,7 +253,7 @@ int CPU::exec() {
         regs.hl = d16;
         break;
     case 0x22:
-        m_emul->write8(regs.hl++, regs.a);
+        Emulator::write8(regs.hl++, regs.a);
         break;
     case 0x23:
         regs.hl++;
@@ -341,7 +340,7 @@ int CPU::exec() {
         }
         break;
     case 0x2a:
-        regs.a = m_emul->read8(regs.hl++);
+        regs.a = Emulator::read8(regs.hl++);
         break;
     case 0x2b:
         regs.hl--;
@@ -372,23 +371,23 @@ int CPU::exec() {
         sp = d16;
         break;
     case 0x32:
-        m_emul->write8(regs.hl--, regs.a);
+        Emulator::write8(regs.hl--, regs.a);
         break;
     case 0x34:
-        m_emul->write8(regs.hl, m_emul->read8(regs.hl) + 1);
-        regs.flags.z = (m_emul->read8(regs.hl) == 0);
+        Emulator::write8(regs.hl, Emulator::read8(regs.hl) + 1);
+        regs.flags.z = (Emulator::read8(regs.hl) == 0);
         regs.flags.n = 0;
-        regs.flags.h = (m_emul->read8(regs.hl) & 0xf) > 9;
+        regs.flags.h = (Emulator::read8(regs.hl) & 0xf) > 9;
         break;
     case 0x35:
-        m_emul->write8(regs.hl, m_emul->read8(regs.hl) - 1);
-        regs.flags.z = (m_emul->read8(regs.hl) == 0);
+        Emulator::write8(regs.hl, Emulator::read8(regs.hl) - 1);
+        regs.flags.z = (Emulator::read8(regs.hl) == 0);
         regs.flags.n = 1;
-        regs.flags.h = (m_emul->read8(regs.hl) & 0xf) > 9;
+        regs.flags.h = (Emulator::read8(regs.hl) & 0xf) > 9;
         break;
     case 0x36:
         print_data = d8;
-        m_emul->write8(regs.hl, d8);
+        Emulator::write8(regs.hl, d8);
         break;
     case 0x38:
         print_data = pc + (signed char)d8 + op_len[op];
@@ -398,7 +397,7 @@ int CPU::exec() {
         }
         break;
     case 0x3a:
-        regs.a = m_emul->read8(regs.hl--);
+        regs.a = Emulator::read8(regs.hl--);
         break;
     case 0x3c:
         inc(regs.a);
@@ -414,13 +413,13 @@ int CPU::exec() {
         regs.b = regs.b;
         break;
     case 0x46:
-        regs.b = m_emul->read8(regs.hl);
+        regs.b = Emulator::read8(regs.hl);
         break;
     case 0x47:
         regs.b = regs.a;
         break;
     case 0x4e:
-        regs.c = m_emul->read8(regs.hl);
+        regs.c = Emulator::read8(regs.hl);
         break;
     case 0x4f:
         regs.c = regs.a;
@@ -429,7 +428,7 @@ int CPU::exec() {
         regs.d = regs.h;
         break;
     case 0x56:
-        regs.d = m_emul->read8(regs.hl);
+        regs.d = Emulator::read8(regs.hl);
         break;
     case 0x57:
         regs.d = regs.a;
@@ -438,7 +437,7 @@ int CPU::exec() {
         regs.e = regs.l;
         break;
     case 0x5e:
-        regs.e = m_emul->read8(regs.hl);
+        regs.e = Emulator::read8(regs.hl);
         break;
     case 0x5f:
         regs.e = regs.a;
@@ -465,19 +464,19 @@ int CPU::exec() {
         regs.l = regs.a;
         break;
     case 0x70:
-        m_emul->write8(regs.hl, regs.b);
+        Emulator::write8(regs.hl, regs.b);
         break;
     case 0x71:
-        m_emul->write8(regs.hl, regs.c);
+        Emulator::write8(regs.hl, regs.c);
         break;
     case 0x72:
-        m_emul->write8(regs.hl, regs.d);
+        Emulator::write8(regs.hl, regs.d);
         break;
     case 0x73:
-        m_emul->write8(regs.hl, regs.e);
+        Emulator::write8(regs.hl, regs.e);
         break;
     case 0x77:
-        m_emul->write8(regs.hl, regs.a);
+        Emulator::write8(regs.hl, regs.a);
         break;
     case 0x78:
         regs.a = regs.b;
@@ -498,7 +497,7 @@ int CPU::exec() {
         regs.a = regs.l;
         break;
     case 0x7e:
-        regs.a = m_emul->read8(regs.hl);
+        regs.a = Emulator::read8(regs.hl);
         break;
     case 0x80:
         add(regs.a, regs.b);
@@ -510,7 +509,7 @@ int CPU::exec() {
         add(regs.a, regs.l);
         break;
     case 0x86:
-        add(regs.a, m_emul->read8(regs.hl));
+        add(regs.a, Emulator::read8(regs.hl));
         break;
     case 0x87:
         add(regs.a, regs.a);
@@ -519,13 +518,13 @@ int CPU::exec() {
         adc(regs.a, regs.c);
         break;
     case 0x8e:
-        adc(regs.a, m_emul->read8(regs.hl));
+        adc(regs.a, Emulator::read8(regs.hl));
         break;
     case 0x90:
         sub(regs.a, regs.b);
         break;
     case 0x96:
-        sub(regs.a, m_emul->read8(regs.hl));
+        sub(regs.a, Emulator::read8(regs.hl));
         break;
     case 0x99:
         sbc(regs.a, regs.c);
@@ -635,7 +634,7 @@ int CPU::exec() {
         sub(regs.a, d8);
         break;
     case 0xd9:
-        m_emul->enable_ints();
+        Emulator::enable_ints();
         pop(pc);
         jump = true;
         break;
@@ -645,13 +644,13 @@ int CPU::exec() {
         break;
     case 0xe0:
         print_data = d8;
-        m_emul->write8(0xff00 + d8, regs.a);
+        Emulator::write8(0xff00 + d8, regs.a);
         break;
     case 0xe1:
         pop(regs.hl);
         break;
     case 0xe2:
-        m_emul->write8(0xff00 + regs.c, regs.a);
+        Emulator::write8(0xff00 + regs.c, regs.a);
         break;
     case 0xe5:
         push(regs.hl);
@@ -666,7 +665,7 @@ int CPU::exec() {
         break;
     case 0xea:
         print_data = d16;
-        m_emul->write8(d16, regs.a);
+        Emulator::write8(d16, regs.a);
         break;
     case 0xee:
         print_data = d8;
@@ -679,13 +678,13 @@ int CPU::exec() {
         break;
     case 0xf0:
         print_data = d8;
-        regs.a = m_emul->read8(0xff00 + d8);
+        regs.a = Emulator::read8(0xff00 + d8);
         break;
     case 0xf1:
         pop(regs.af);
         break;
     case 0xf3:
-        m_emul->disable_ints();
+        Emulator::disable_ints();
         break;
     case 0xf5:
         push(regs.af);
@@ -696,10 +695,10 @@ int CPU::exec() {
         break;
     case 0xfa:
         print_data = d16;
-        regs.a = m_emul->read8(d16);
+        regs.a = Emulator::read8(d16);
         break;
     case 0xfb:
-        m_emul->enable_ints();
+        Emulator::enable_ints();
         break;
     case 0xfe:
         print_data = d8;
@@ -715,7 +714,7 @@ int CPU::exec() {
 }
 
 int CPU::exec_cb() {
-    unsigned char op = m_emul->read8(pc + 1);
+    unsigned char op = Emulator::read8(pc + 1);
     switch (op) {
     case 0x27:
         sla(regs.a);
@@ -781,15 +780,15 @@ int CPU::exec_cb() {
         bit(regs.c, 7);
         break;
     case 0x7e:
-        bit(m_emul->read8(regs.hl), 7);
+        bit(Emulator::read8(regs.hl), 7);
         break;
     case 0x7f:
         bit(regs.a, 7);
         break;
     case 0x86: {
-        auto val = m_emul->read8(regs.hl);
+        auto val = Emulator::read8(regs.hl);
         res(val, 0);
-        m_emul->write8(regs.hl, val);
+        Emulator::write8(regs.hl, val);
         break;
     }
     case 0x87:

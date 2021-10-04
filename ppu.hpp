@@ -1,15 +1,11 @@
 #pragma once
 
-class Emulator;
-
 class PPU {
 public:
-    PPU(Emulator* emul) : m_emul(emul) {}
     unsigned char read8(int addr);
     void write8(int addr, unsigned char val);
     void exec(int cycles);
 private:
-    Emulator* m_emul;
     unsigned char m_vram_tiles1[0x1000] { 0 };
     unsigned char m_vram_tiles2[0x800] { 0 };
     unsigned char m_vram_bg_map1[0x400] { 0 };
