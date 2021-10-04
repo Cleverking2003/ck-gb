@@ -131,6 +131,13 @@ void CPU::bit(unsigned char val, unsigned char bit) {
     regs.flags.h = 1;
 }
 
+void CPU::srl(unsigned char& val) {
+    regs.flags.c = (val & 1);
+    val >>= 1;
+    regs.flags.z = (val == 0);
+    regs.flags.n = regs.flags.h = 0;
+}
+
 void print_op(unsigned char op, unsigned short data = 0) {
     if (op == 0xcb) printf(cb_format[data]);
     else printf(op_format[op], data);
@@ -245,6 +252,10 @@ int CPU::exec() {
     case 0x23:
         regs.hl++;
         break;
+    case 0x26:
+        print_data = d8;
+        regs.h = d8;
+        break;
     case 0x28:
         print_data = pc + (signed char)d8 + op_len[op];
         if (regs.flags.z) {
@@ -260,6 +271,10 @@ int CPU::exec() {
         break;
     case 0x2d:
         dec(regs.l);
+        break;
+    case 0x2e:
+        print_data = d8;
+        regs.l = d8;
         break;
     case 0x2f:
         regs.a ^= 0xff;
@@ -388,17 +403,32 @@ int CPU::exec() {
     case 0x7e:
         regs.a = m_emul->read8(regs.hl);
         break;
+    case 0x80:
+        add(regs.a, regs.b);
+        break;
     case 0x85:
         add(regs.a, regs.l);
         break;
+    case 0x86:
+        add(regs.a, m_emul->read8(regs.hl));
+        break;
     case 0x87:
         add(regs.a, regs.a);
+        break;
+    case 0x89:
+        adc(regs.a, regs.c);
+        break;
+    case 0xa0:
+        log_and(regs.b);
         break;
     case 0xa1:
         log_and(regs.c);
         break;
     case 0xa7:
         log_and(regs.a);
+        break;
+    case 0xa8:
+        log_xor(regs.b);
         break;
     case 0xa9:
         log_xor(regs.c);
@@ -411,6 +441,9 @@ int CPU::exec() {
         break;
     case 0xb1:
         log_or(regs.c);
+        break;
+    case 0xb8:
+        cp(regs.b);
         break;
     case 0xc0:
         if (!regs.flags.z) {
@@ -474,6 +507,10 @@ int CPU::exec() {
         break;
     case 0xd5:
         push(regs.de);
+        break;
+    case 0xd6:
+        print_data = d8;
+        sub(regs.a, d8);
         break;
     case 0xd9:
         m_emul->enable_ints();
@@ -553,8 +590,20 @@ int CPU::exec_cb() {
     case 0x27:
         sla(regs.a);
         break;
+    case 0x33:
+        swap(regs.e);
+        break;
     case 0x37:
         swap(regs.a);
+        break;
+    case 0x3f:
+        srl(regs.a);
+        break;
+    case 0x40:
+        bit(regs.b, 0);
+        break;
+    case 0x48:
+        bit(regs.b, 1);
         break;
     case 0x50:
         bit(regs.b, 2);
@@ -562,11 +611,26 @@ int CPU::exec_cb() {
     case 0x58:
         bit(regs.b, 3);
         break;
+    case 0x5f:
+        bit(regs.a, 3);
+        break;
     case 0x60:
         bit(regs.b, 4);
         break;
+    case 0x61:
+        bit(regs.c, 4);
+        break;
     case 0x68:
         bit(regs.b, 5);
+        break;
+    case 0x69:
+        bit(regs.c, 5);
+        break;
+    case 0x6f:
+        bit(regs.a, 5);
+        break;
+    case 0x77:
+        bit(regs.a, 6);
         break;
     case 0x7e:
         bit(m_emul->read8(regs.hl), 7);
