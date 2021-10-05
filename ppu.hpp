@@ -5,12 +5,25 @@ public:
     unsigned char read8(int addr);
     void write8(int addr, unsigned char val);
     void exec(int cycles);
+    void draw_line();
 private:
-    unsigned char m_vram_tiles1[0x1000] { 0 };
-    unsigned char m_vram_tiles2[0x800] { 0 };
+    unsigned char m_vram_tiles[0x1800] { 0 };
     unsigned char m_vram_bg_map1[0x400] { 0 };
     unsigned char m_vram_bg_map2[0x400] { 0 };
     unsigned char m_oam[0xa0] { 0 };
+    union {
+        unsigned char lcdc;
+        struct {
+            bool display_enable : 1;
+            bool window_map_select : 1;
+            bool window_enable : 1;
+            bool bg_data_select : 1;
+            bool bg_map_select : 1;
+            bool obj_size : 1;
+            bool obj_enable : 1;
+            bool bg_enable : 1;
+        };
+    } m_lcdc;
     union {
         unsigned char stat;
         struct {
@@ -23,6 +36,11 @@ private:
             char mode : 2;
         };
     } m_stat { 0 };
-    int m_ly { 0 };
+    unsigned char m_ly { 0 };
+    unsigned char m_scy { 0 };
+    unsigned char m_scx { 0 };
+    unsigned char m_bgp { 0 };
     int m_scanline_cycles { 0 };
+    unsigned char m_screen[144][160] { {0} };
+    int frames { 0 };
 };
