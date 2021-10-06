@@ -673,6 +673,13 @@ int CPU::exec() {
         print_data = d8;
         sub(regs.a, d8);
         break;
+    case 0xd8:
+        if (getC()) {
+            pop(pc);
+            jump = true;
+            jump_cycles = 12;
+        }
+        break;
     case 0xd9:
         Emulator::enable_ints();
         pop(pc);
