@@ -80,15 +80,7 @@ void PPU::exec(int cycles) {
         if (m_stat.mode != 1) {
             m_stat.mode = 1;
             Emulator::raise_int(0);
-            if (frames++ == 100) {
-                for (int y = 0; y < 144; y++) {
-                    for (int x = 0; x < 160; x++) {
-                        std::cout << (unsigned)m_screen[y][x];
-                    }
-                    std::cout << '\n';
-                }
-                //exit(0);
-            }
+            frames++;
         }
     }
     else if (m_scanline_cycles < 80) {
@@ -109,25 +101,21 @@ void PPU::draw_line() {
     if (!(m_lcdc.lcdc & 0x80)) {
         return;
     }
-    int bg_tiles_base = (m_lcdc.lcdc & 0x10) ? 0x000 : 0x800;
-    auto tile_idx = ((m_scy + m_ly) / 8) * 32 + (m_scx / 8);
-    auto tile = (m_lcdc.lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
-    int start_byte = tile * 16 + ((m_scy + m_ly) % 8) * 2;
-    if (!(m_lcdc.lcdc & 0x10)) {
-        start_byte -= 128 * 16;
-    }
-    for (int x = 0; x < 160; x++) {
-        auto data = m_vram_tiles[bg_tiles_base + start_byte], 
-            data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
-        auto bit_idx = 7 - ((m_scx + x) % 8);
-        auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
-        auto color = (m_bgp >> (color_idx * 2)) & 3;
-        m_screen[m_ly][x] = color;
-        tile_idx = ((m_scy + m_ly) / 8) * 32 + ((m_scx + x) / 8);
-        tile = (m_lcdc.lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
-        start_byte = tile * 16 + ((m_scy + m_ly) % 8) * 2;
-        if (!(m_lcdc.lcdc & 0x10)) {
-            start_byte -= 128 * 16;
+    if (m_lcdc.lcdc & 1) {
+        int bg_tiles_base = (m_lcdc.lcdc & 0x10) ? 0x000 : 0x800;
+        for (int x = 0; x < 160; x++) {
+            int tile_idx = ((m_scy + m_ly) / 8) * 32 + ((m_scx + x) / 8);
+            int tile = (m_lcdc.lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
+            int start_byte = tile * 16 + ((m_scy + m_ly) % 8) * 2;
+            if (!(m_lcdc.lcdc & 0x10)) {
+                start_byte -= 128 * 16;
+            }
+            auto data = m_vram_tiles[bg_tiles_base + start_byte], 
+                data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
+            auto bit_idx = 7 - ((m_scx + x) % 8);
+            auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
+            auto color = (m_bgp >> (color_idx * 2)) & 3;
+            m_screen[m_ly][x] = color;
         }
     }
 }

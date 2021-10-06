@@ -100,7 +100,6 @@ bool Emulator::exec() {
 // 4 = Joypad
 void Emulator::raise_int(int interrupt) {
     if (s_the->m_ie & (1 << interrupt) && s_the->m_interrupts_enabled) {
-        std::cout << "Executing interrupt " << interrupt << '\n';
         s_the->m_interrupts_enabled = false;
         s_the->m_if &= ~(1 << interrupt);
         s_the->m_cpu.jump_to(0x40 + interrupt * 8);
