@@ -9,7 +9,10 @@ Emulator* Emulator::create() {
     return s_the;
 }
 
-bool Emulator::load(const char* game) { return s_the->m_rom.load(game); }
+bool Emulator::load(const char* game) { 
+    s_the->m_window.create(sf::VideoMode(160, 144), "CleverKing's Gameboy Emulator", sf::Style::Default);
+    return s_the->m_rom.load(game);
+}
 void Emulator::unload() { s_the->m_rom.unload(); }
 void Emulator::enable_ints() { s_the->m_interrupts_enabled = true; }
 void Emulator::disable_ints() { s_the->m_interrupts_enabled = false; }
@@ -94,15 +97,23 @@ bool Emulator::exec() {
     return cycles != 0;
 }
 
-int Emulator::elapsed_cycles() {
-    int cycles = s_the->m_elapsed_cycles;
-    if (cycles > 4194304)
-        s_the->m_elapsed_cycles %= 4194304;
-    return cycles;
-}
-
-sf::Sprite* Emulator::draw() {
-    return s_the->m_ppu.build_image();
+void Emulator::run() {
+    while (Emulator::exec()) {
+        if (s_the->m_elapsed_cycles > 4194304 / 60) {
+            s_the->m_elapsed_cycles -= 4194304 / 60;
+            sf::Event e;
+            while(s_the->m_window.pollEvent(e)) {
+                if (e.type == sf::Event::Closed) {
+                    s_the->m_window.close();
+                    return;
+                }
+            }
+            s_the->m_window.clear(sf::Color::White);
+            s_the->m_window.draw(*s_the->m_ppu.build_image());
+            s_the->m_window.display();
+            sf::sleep(sf::milliseconds(16));
+        }
+    }
 }
 
 // 0 = VBlank
