@@ -272,6 +272,9 @@ int CPU::exec() {
     case 0x23:
         regs.hl++;
         break;
+    case 0x25:
+        dec(regs.h);
+        break;
     case 0x26:
         print_data = d8;
         regs.h = d8;
@@ -568,11 +571,20 @@ int CPU::exec() {
     case 0xb1:
         log_or(regs.c);
         break;
+    case 0xb2:
+        log_or(regs.d);
+        break;
     case 0xb7:
         log_or(regs.a);
         break;
     case 0xb8:
         cp(regs.b);
+        break;
+    case 0xb9:
+        cp(regs.c);
+        break;
+    case 0xbe:
+        cp(Emulator::read8(regs.hl));
         break;
     case 0xc0:
         if (!getZ()) {
@@ -758,6 +770,9 @@ int CPU::exec_cb() {
     case 0x50:
         bit(regs.b, 2);
         break;
+    case 0x57:
+        bit(regs.a, 2);
+        break;
     case 0x58:
         bit(regs.b, 3);
         break;
@@ -809,6 +824,30 @@ int CPU::exec_cb() {
     case 0x87:
         res(regs.a, 0);
         break;
+    case 0x9e: {
+        auto val = Emulator::read8(regs.hl);
+        res(val, 3);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
+    case 0xbe: {
+        auto val = Emulator::read8(regs.hl);
+        res(val, 7);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
+    case 0xde: {
+        auto val = Emulator::read8(regs.hl);
+        set(val, 3);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
+    case 0xfe: {
+        auto val = Emulator::read8(regs.hl);
+        set(val, 7);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
     default:
         std::cout << "Unimplemented CB opcode: " << std::hex << (unsigned)op << " at " << pc << '\n';
         return 0;
