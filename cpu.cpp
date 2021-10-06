@@ -3,16 +3,25 @@
 #include "ops.hpp"
 #include <iostream>
 
+bool checkH(unsigned char val, unsigned char val2, bool n) {
+    if (!n)
+        return ((val & 0xf) + (val2 & 0xf)) > 0xf;
+    else
+        return ((signed char)((val & 0xf) - (val2 & 0xf))) < 0;
+}
+
 void CPU::inc(unsigned char& val) {
-    setZ(++val == 0);
+    setZ((val + 1) == 0);
     setN(false);
-    setH((val & 0xf) > 9);
+    setH(checkH(val, 1, false));
+    val++;
 }
 
 void CPU::dec(unsigned char& val) {
-    setZ(--val == 0);
+    setZ((val - 1) == 0);
     setN(true);
-    setH((val & 0xf) > 9);
+    setH(checkH(val, 1, true));
+    val--;
 }
 
 void CPU::swap(unsigned char& val) {
@@ -26,25 +35,27 @@ void CPU::swap(unsigned char& val) {
 
 void CPU::add(unsigned char& val, unsigned char val2) {
     setC((val + val2) < max(val, val2));
-    val += val2;
-    setZ(val == 0);
+    auto res = val + val2;
+    setZ(res == 0);
     setN(false);
-    setH((val & 0xf) > 9);
+    setH(checkH(val, val2, false));
+    val = res;
 }
 
 void CPU::sub(unsigned char& val, unsigned char val2) {
     setC(val < val2);
-    val -= val2;
-    setZ(val == 0);
+    auto res = val - val2;
+    setZ(res == 0);
     setN(true);
-    setH((val & 0xf) > 9);
+    setH(checkH(val, val2, true));
+    val = res;
 }
 
 void CPU::adc(unsigned char& val, unsigned char val2) {
     unsigned char res = val + val2 + (getC() ? 1 : 0);
     setZ(res == 0);
     setN(false);
-    setH((res & 0xf) > 9);
+    setH(checkH(val, val2 + (getC() ? 1 : 0), false));
     setC(res < max(max(val, val2), (unsigned char)(getC() ? 1 : 0)));
     val = res;
 }
@@ -53,7 +64,7 @@ void CPU::sbc(unsigned char& val, unsigned char val2) {
     unsigned char res = val - val2 - (getC() ? 1 : 0);
     setZ(res == 0);
     setN(true);
-    setH((res & 0xf) > 9);
+    setH(checkH(val, val2 + (getC() ? 1 : 0), true));
     setC(val < (val2 + (getC() ? 1 : 0)));
     val = res;
 }
@@ -85,7 +96,7 @@ void CPU::log_xor(unsigned char val) {
 void CPU::cp(unsigned char val) {
     setZ(regs.a == val);
     setN(true);
-    setH(((regs.a - val) & 0xf) > 9);
+    setH(checkH(regs.a, val, true));
     setC(regs.a < val);
 }
 
@@ -192,7 +203,7 @@ int CPU::exec() {
     case 0x09: {
         unsigned short res = regs.hl + regs.bc;
         setN(false);
-        setH((regs.hl & 0xf) > 9);
+        setH(checkH(regs.l, regs.c, false));
         setC(res < max(regs.hl, regs.bc));
         regs.hl = res;
         break;
@@ -234,7 +245,7 @@ int CPU::exec() {
     case 0x19: {
         unsigned short res = regs.hl + regs.de;
         setN(false);
-        setH((regs.hl & 0xf) > 9);
+        setH(checkH(regs.l, regs.e, false));
         setC(res < max(regs.hl, regs.de));
         regs.hl = res;
         break;
@@ -279,76 +290,74 @@ int CPU::exec() {
         print_data = d8;
         regs.h = d8;
         break;
-    case 0x27:
-        if (!getN()) {
-            if (!getC() && !getH() && (regs.a & 0xf0 < 0xa0) && (regs.a && 0xf < 9)) {
-                setC(false);
-                break;
-            }
-            if (!getC()) {
-                if (!getH()) {
-                    if (regs.a & 0xf0 < 0xa0) {
-                        if (regs.a & 0xf > 9) {
-                            regs.a += 0x06;
-                            setC(false);
-                        }
-                    }
-                    else {
-                        if (regs.a & 0xf > 9) {
-                            regs.a += 0x66;
-                        }
-                        else {
-                            regs.a += 0x60;
-                        }
-                        setC(true);
-                    }
+    case 0x27: {
+        unsigned char upper = (regs.a & 0xf0) >> 4, lower = regs.a & 0xf;
+        bool n = getN(), h = getH(), c = getC(), new_c = c;
+        unsigned char addend = 0;
+        if (!n) {
+            if (!c) {
+                if (upper < 10 && lower < 10 && !h) {
+                    addend = 0x00;
+                    new_c = false;
                 }
-                else {
-                    if (regs.a & 0xf0 < 0xa0) {
-                        regs.a += 0x06;
-                        setC(false);
-                    }
-                    else {
-                        regs.a += 0x66;
-                        setC(true);
-                    }
+                else if (upper < 9 && lower > 9 && !h) {
+                    addend = 0x06;
+                    new_c = false;
+                }
+                else if (upper < 10 && lower < 4 && h) {
+                    addend = 0x06;
+                    new_c = false;
+                }
+                else if (upper > 9 && lower < 9 && !h) {
+                    addend = 0x60;
+                    new_c = true;
+                }
+                else if (upper > 8 && lower > 9 && !h) {
+                    addend = 0x66;
+                    new_c = true;
+                }
+                else if (upper > 8 && lower < 4 && h) {
+                    addend = 0x66;
+                    new_c = true;
                 }
             }
             else {
-                if (!getH()) {
-                    if (regs.a & 0xf > 9) {
-                        regs.a += 0x66;
-                    }
-                    else {
-                        regs.a += 0x60;
-                    }
-                    setC(true);
+                if (upper < 3 && lower < 10 && !h) {
+                    addend = 0x60;
                 }
-                else {
-                    regs.a += 0x66;
-                    setC(true);
+                else if (upper < 3 && lower > 9 && !h) {
+                    addend = 0x66;
                 }
+                else if (upper < 4 && lower < 4 && h) {
+                    addend = 0x66;
+                }
+                new_c = true;
             }
         }
         else {
-            if (!getC() && !getH()) {
-                setC(false);
-            }
-            else if (!getC()&& getH()) {
-                regs.a += 0xfa;
-                setC(false);
+            if (!c) {
+                if (upper < 10 && lower < 10 && !h) {
+                    addend = 0x00;
+                }
+                else if (upper < 9 && lower > 5 && h) {
+                    addend = 0xfa;
+                }
+                new_c = false;
             }
             else {
-                if (!getH()) {
-                    regs.a += 0xa0;
+                if (upper > 6 && lower < 10 && !h) {
+                    addend = 0xa0;
                 }
-                else {
-                    regs.a += 0x9a;
+                else if (upper > 5 && lower > 5 && h) {
+                    addend = 0x9a;
                 }
-                setC(true);
+                new_c = true;
             }
         }
+        regs.a += addend;
+        setC(new_c);
         break;
+    }
     case 0x28:
         print_data = pc + (signed char)d8 + op_len[op];
         if (getZ()) {
@@ -391,18 +400,22 @@ int CPU::exec() {
     case 0x32:
         Emulator::write8(regs.hl--, regs.a);
         break;
-    case 0x34:
-        Emulator::write8(regs.hl, Emulator::read8(regs.hl) + 1);
-        setZ(Emulator::read8(regs.hl) == 0);
+    case 0x34: {
+        auto val = Emulator::read8(regs.hl);
+        Emulator::write8(regs.hl, val + 1);
+        setZ((val + 1) == 0);
         setN(false);
-        setH((Emulator::read8(regs.hl) & 0xf) > 9);
+        setH(checkH(val, 1, false));
         break;
-    case 0x35:
-        Emulator::write8(regs.hl, Emulator::read8(regs.hl) - 1);
-        setZ(Emulator::read8(regs.hl) == 0);
+    }
+    case 0x35: {
+        auto val = Emulator::read8(regs.hl);
+        Emulator::write8(regs.hl, val - 1);
+        setZ((val - 1) == 0);
         setN(true);
-        setH((Emulator::read8(regs.hl) & 0xf) > 9);
+        setH(checkH(val, 1, true));
         break;
+    }
     case 0x36:
         print_data = d8;
         Emulator::write8(regs.hl, d8);
