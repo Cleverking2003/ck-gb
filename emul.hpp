@@ -6,7 +6,7 @@
 
 class Emulator {
 public:
-    static Emulator* the();
+    static Emulator* create();
     static bool load(const char* game);
     static void unload();
     static unsigned char read8(int addr);
@@ -17,6 +17,8 @@ public:
     static void enable_ints();
     static void disable_ints();
     static bool exec();
+    static int elapsed_cycles();
+    static sf::Sprite* draw();
 private:
     Emulator() {}
     Emulator(const Emulator&) = delete;
@@ -30,4 +32,5 @@ private:
     unsigned char m_hram[0x7f] { 0 };
     unsigned char m_if { 0 }, m_ie { 0 };
     bool m_interrupts_enabled { true };
+    int m_elapsed_cycles { 0 };
 };

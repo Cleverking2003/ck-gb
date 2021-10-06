@@ -80,6 +80,7 @@ void PPU::exec(int cycles) {
         if (m_stat.mode != 1) {
             m_stat.mode = 1;
             Emulator::raise_int(0);
+            std::cout << frames << '\n';
             frames++;
         }
     }
@@ -103,19 +104,28 @@ void PPU::draw_line() {
     }
     if (m_lcdc.lcdc & 1) {
         int bg_tiles_base = (m_lcdc.lcdc & 0x10) ? 0x000 : 0x800;
+        int tile_line_offset = ((m_scy + m_ly) % 8) * 2;
+        if (!(m_lcdc.lcdc & 0x10)) {
+            tile_line_offset -= 128 * 16;
+        }
         for (int x = 0; x < 160; x++) {
             int tile_idx = ((m_scy + m_ly) / 8) * 32 + ((m_scx + x) / 8);
             int tile = (m_lcdc.lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
-            int start_byte = tile * 16 + ((m_scy + m_ly) % 8) * 2;
-            if (!(m_lcdc.lcdc & 0x10)) {
-                start_byte -= 128 * 16;
-            }
+            int start_byte = tile * 16 + tile_line_offset;
             auto data = m_vram_tiles[bg_tiles_base + start_byte], 
                 data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
             auto bit_idx = 7 - ((m_scx + x) % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (m_bgp >> (color_idx * 2)) & 3;
-            m_screen[m_ly][x] = color;
+            m_screen[m_ly][x][0] = m_screen[m_ly][x][1] = m_screen[m_ly][x][2] = (3 - color) * 85;
+            m_screen[m_ly][x][3] = 255;
         }
     }
+}
+
+sf::Sprite* PPU::build_image() {
+    m_frame.create(160, 144, (sf::Uint8*)m_screen);
+    m_frame_texture.loadFromImage(m_frame);
+    m_frame_sprite.setTexture(m_frame_texture);
+    return &m_frame_sprite;
 }

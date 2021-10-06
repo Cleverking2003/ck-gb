@@ -1,4 +1,5 @@
 #pragma once
+#include <SFML/Graphics.hpp>
 
 class PPU {
 public:
@@ -6,6 +7,7 @@ public:
     void write8(int addr, unsigned char val);
     void exec(int cycles);
     void draw_line();
+    sf::Sprite* build_image();
 private:
     unsigned char m_vram_tiles[0x1800] { 0 };
     unsigned char m_vram_bg_map1[0x400] { 0 };
@@ -41,6 +43,9 @@ private:
     unsigned char m_scx { 0 };
     unsigned char m_bgp { 0 };
     int m_scanline_cycles { 0 };
-    unsigned char m_screen[144][160] { {0} };
+    unsigned char m_screen[144][160][4] { {0} };
     int frames { 0 };
+    sf::Image m_frame;
+    sf::Texture m_frame_texture;
+    sf::Sprite m_frame_sprite;
 };

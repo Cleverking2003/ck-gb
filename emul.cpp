@@ -3,7 +3,7 @@
 
 static Emulator* s_the;
 
-Emulator* Emulator::the() {
+Emulator* Emulator::create() {
     if (!s_the)
         s_the = new Emulator;
     return s_the;
@@ -89,8 +89,20 @@ bool Emulator::exec() {
         }
     }
     int cycles = s_the->m_cpu.exec();
+    s_the->m_elapsed_cycles += cycles;
     s_the->m_ppu.exec(cycles);
     return cycles != 0;
+}
+
+int Emulator::elapsed_cycles() {
+    int cycles = s_the->m_elapsed_cycles;
+    if (cycles > 4194304)
+        s_the->m_elapsed_cycles %= 4194304;
+    return cycles;
+}
+
+sf::Sprite* Emulator::draw() {
+    return s_the->m_ppu.build_image();
 }
 
 // 0 = VBlank
