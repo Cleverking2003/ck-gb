@@ -29,7 +29,7 @@ private:
     PPU m_ppu;
     unsigned char m_wram[0x2000] { 0 };
     unsigned char m_hram[0x7f] { 0 };
-    unsigned char m_if { 0 }, m_ie { 0 };
+    unsigned char m_joyp { 0xf }, m_if { 0 }, m_ie { 0 };
     bool m_interrupts_enabled { true };
     int m_elapsed_cycles { 0 };
     sf::RenderWindow m_window;

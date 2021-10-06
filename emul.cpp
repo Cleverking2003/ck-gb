@@ -28,7 +28,27 @@ unsigned char Emulator::read8(int addr) {
     case 0xfe00 ... 0xfe9f:
         return s_the->m_ppu.read8(addr);
     case 0xff00:
-        return 0x0f;
+        if (!(s_the->m_joyp & 0x20)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return)) s_the->m_joyp &= ~0x8;
+            else s_the->m_joyp |= 0x8;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::RShift)) s_the->m_joyp &= ~0x4;
+            else s_the->m_joyp |= 0x4;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) s_the->m_joyp &= ~0x2;
+            else s_the->m_joyp |= 0x2;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) s_the->m_joyp &= ~0x1;
+            else s_the->m_joyp |= 0x1;
+        }
+        else if (!(s_the->m_joyp & 0x10)) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) s_the->m_joyp &= ~0x8;
+            else s_the->m_joyp |= 0x8;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) s_the->m_joyp &= ~0x4;
+            else s_the->m_joyp |= 0x4;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) s_the->m_joyp &= ~0x2;
+            else s_the->m_joyp |= 0x2;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) s_the->m_joyp &= ~0x1;
+            else s_the->m_joyp |= 0x1;
+        }
+        return s_the->m_joyp;
     case 0xff0f:
         return s_the->m_if;
     case 0xff40 ... 0xff4b:
@@ -60,6 +80,9 @@ void Emulator::write8(int addr, unsigned char val) {
         break;
     case 0xfe00 ... 0xfe9f:
         s_the->m_ppu.write8(addr, val);
+        break;
+    case 0xff00:
+        s_the->m_joyp = val | 0xf;
         break;
     case 0xff0f:
         s_the->m_if = val;
