@@ -4,89 +4,97 @@
 #include <iostream>
 
 void CPU::inc(unsigned char& val) {
-    regs.flags.z = (++val == 0);
-    regs.flags.n = 0;
-    regs.flags.h = (val & 0xf) > 9;
+    setZ(++val == 0);
+    setN(false);
+    setH((val & 0xf) > 9);
 }
 
 void CPU::dec(unsigned char& val) {
-    regs.flags.z = (--val == 0);
-    regs.flags.n = 1;
-    regs.flags.h = (val & 0xf) > 9;
+    setZ(--val == 0);
+    setN(true);
+    setH((val & 0xf) > 9);
 }
 
 void CPU::swap(unsigned char& val) {
     unsigned char lo = val & 0xf, hi = (val >> 4) & 0xf;
     val = (lo << 4) | hi;
-    regs.flags.z = (val == 0);
-    regs.flags.n = regs.flags.h = regs.flags.c = 0;
+    setZ(val == 0);
+    setN(false);
+    setH(false);
+    setC(false);
 }
 
 void CPU::add(unsigned char& val, unsigned char val2) {
-    regs.flags.c = ((val + val2) < max(val, val2));
+    setC((val + val2) < max(val, val2));
     val += val2;
-    regs.flags.z = (val == 0);
-    regs.flags.n = 0;
-    regs.flags.h = (val & 0xf) > 9;
+    setZ(val == 0);
+    setN(false);
+    setH((val & 0xf) > 9);
 }
 
 void CPU::sub(unsigned char& val, unsigned char val2) {
-    regs.flags.c = (val < val2);
+    setC(val < val2);
     val -= val2;
-    regs.flags.z = (val == 0);
-    regs.flags.n = 1;
-    regs.flags.h = (val & 0xf) > 9;
+    setZ(val == 0);
+    setN(true);
+    setH((val & 0xf) > 9);
 }
 
 void CPU::adc(unsigned char& val, unsigned char val2) {
-    unsigned char res = val + val2 + regs.flags.c;
-    regs.flags.z = (res == 0);
-    regs.flags.n = 0;
-    regs.flags.h = (res & 0xf) > 9;
-    regs.flags.c = (res < max(max(val, val2), (unsigned char)regs.flags.c));
+    unsigned char res = val + val2 + (getC() ? 1 : 0);
+    setZ(res == 0);
+    setN(false);
+    setH((res & 0xf) > 9);
+    setC(res < max(max(val, val2), (unsigned char)(getC() ? 1 : 0)));
     val = res;
 }
 
 void CPU::sbc(unsigned char& val, unsigned char val2) {
-    unsigned char res = val - val2 - regs.flags.c;
-    regs.flags.z = (res == 0);
-    regs.flags.n = 1;
-    regs.flags.h = (res & 0xf) > 9;
-    regs.flags.c = (val < (val2 + regs.flags.c));
+    unsigned char res = val - val2 - (getC() ? 1 : 0);
+    setZ(res == 0);
+    setN(true);
+    setH((res & 0xf) > 9);
+    setC(val < (val2 + (getC() ? 1 : 0)));
     val = res;
 }
 
 void CPU::log_and(unsigned char val) {
     regs.a &= val;
-    regs.flags.z = (regs.a == 0);
-    regs.flags.n = regs.flags.c = 0;
-    regs.flags.h = 1;
+    setZ(regs.a == 0);
+    setN(false);
+    setH(true);
+    setC(false);
 }
 
 void CPU::log_or(unsigned char val) {
     regs.a |= val;
-    regs.flags.z = (regs.a == 0);
-    regs.flags.n = regs.flags.h = regs.flags.c = 0;
+    setZ(regs.a == 0);
+    setN(false);
+    setH(false);
+    setC(false);
 }
 
 void CPU::log_xor(unsigned char val) {
     regs.a ^= val;
-    regs.flags.z = (regs.a == 0);
-    regs.flags.n = regs.flags.h = regs.flags.c = 0;
+    setZ(regs.a == 0);
+    setN(false);
+    setH(false);
+    setC(false);
 }
 
 void CPU::cp(unsigned char val) {
-    regs.flags.z = (regs.a == val);
-    regs.flags.n = 1;
-    regs.flags.h = ((regs.a - val) & 0xf) > 9;
-    regs.flags.c = (regs.a < val);
+    setZ(regs.a == val);
+    setN(true);
+    setH(((regs.a - val) & 0xf) > 9);
+    setC(regs.a < val);
 }
 
 void CPU::sla(unsigned char& val) {
-    regs.flags.c = (val & 0x80) != 0;
+    setC((val & 0x80) != 0);
     val <<= 1;
-    regs.flags.z = (val == 0);
-    regs.flags.n = regs.flags.h = 0;
+    setZ(val == 0);
+    setN(false);
+    setH(false);
 }
 
 void CPU::push(unsigned short val) {
@@ -102,19 +110,21 @@ void CPU::pop(unsigned short& val) {
 void CPU::rlc(unsigned char& val) {
     unsigned char bit = (val & 0x80) ? 1 : 0;
     val <<= 1;
-    val |= regs.flags.c;
-    regs.flags.c = bit;
-    regs.flags.z = (val == 0);
-    regs.flags.n = regs.flags.h = 0;
+    val |= (getC() ? 1 : 0);
+    setC(bit);
+    setZ(val == 0);
+    setN(false);
+    setH(false);
 }
 
 void CPU::rrc(unsigned char& val) {
     unsigned char bit = val & 1;
     val >>= 1;
-    val |= regs.flags.c << 7;
-    regs.flags.c = bit;
-    regs.flags.z = (val == 0);
-    regs.flags.n = regs.flags.h = 0;
+    val |= (getC() ? 1 : 0) << 7;
+    setC(bit);
+    setZ(val == 0);
+    setN(false);
+    setH(false);
 }
 
 void CPU::res(unsigned char& val, unsigned char bit) {
@@ -126,16 +136,17 @@ void CPU::set(unsigned char& val, unsigned char bit) {
 }
 
 void CPU::bit(unsigned char val, unsigned char bit) {
-    regs.flags.z = (val & (1 << bit)) == 0;
-    regs.flags.n = 0;
-    regs.flags.h = 1;
+    setZ((val & (1 << bit)) == 0);
+    setN(false);
+    setH(true);
 }
 
 void CPU::srl(unsigned char& val) {
-    regs.flags.c = (val & 1);
+    setC(val & 1);
     val >>= 1;
-    regs.flags.z = (val == 0);
-    regs.flags.n = regs.flags.h = 0;
+    setZ(val == 0);
+    setN(false);
+    setH(false);
 }
 
 void print_op(unsigned char op, unsigned short data = 0) {
@@ -176,13 +187,13 @@ int CPU::exec() {
         break;
     case 0x07:
         rlc(regs.a);
-        regs.flags.z = 0;
+        setZ(false);
         break;
     case 0x09: {
         unsigned short res = regs.hl + regs.bc;
-        regs.flags.n = 0;
-        regs.flags.h = (regs.hl & 0xf) > 9;
-        regs.flags.c = res < max(regs.hl, regs.bc);
+        setN(false);
+        setH((regs.hl & 0xf) > 9);
+        setC(res < max(regs.hl, regs.bc));
         regs.hl = res;
         break;
     }
@@ -222,9 +233,9 @@ int CPU::exec() {
         break;
     case 0x19: {
         unsigned short res = regs.hl + regs.de;
-        regs.flags.n = 0;
-        regs.flags.h = (regs.hl & 0xf) > 9;
-        regs.flags.c = res < max(regs.hl, regs.de);
+        setN(false);
+        setH((regs.hl & 0xf) > 9);
+        setC(res < max(regs.hl, regs.de));
         regs.hl = res;
         break;
     }
@@ -246,7 +257,7 @@ int CPU::exec() {
         break;
     case 0x20:
         print_data = pc + (signed char)d8 + op_len[op];
-        if (!regs.flags.z) {
+        if (!getZ()) {
             pc += (signed char)d8;
             jump_cycles = 4;
         }
@@ -266,17 +277,17 @@ int CPU::exec() {
         regs.h = d8;
         break;
     case 0x27:
-        if (!regs.flags.n) {
-            if (!regs.flags.c && !regs.flags.h && (regs.a & 0xf0 < 0xa0) && (regs.a && 0xf < 9)) {
-                regs.flags.c = 0;
+        if (!getN()) {
+            if (!getC() && !getH() && (regs.a & 0xf0 < 0xa0) && (regs.a && 0xf < 9)) {
+                setC(false);
                 break;
             }
-            if (!regs.flags.c) {
-                if (!regs.flags.h) {
+            if (!getC()) {
+                if (!getH()) {
                     if (regs.a & 0xf0 < 0xa0) {
                         if (regs.a & 0xf > 9) {
                             regs.a += 0x06;
-                            regs.flags.c = 0;
+                            setC(false);
                         }
                     }
                     else {
@@ -286,58 +297,58 @@ int CPU::exec() {
                         else {
                             regs.a += 0x60;
                         }
-                        regs.flags.c = 1;
+                        setC(true);
                     }
                 }
                 else {
                     if (regs.a & 0xf0 < 0xa0) {
                         regs.a += 0x06;
-                        regs.flags.c = 0;
+                        setC(false);
                     }
                     else {
                         regs.a += 0x66;
-                        regs.flags.c = 1;
+                        setC(true);
                     }
                 }
             }
             else {
-                if (!regs.flags.h) {
+                if (!getH()) {
                     if (regs.a & 0xf > 9) {
                         regs.a += 0x66;
                     }
                     else {
                         regs.a += 0x60;
                     }
-                    regs.flags.c = 1;
+                    setC(true);
                 }
                 else {
                     regs.a += 0x66;
-                    regs.flags.c = 1;
+                    setC(true);
                 }
             }
         }
         else {
-            if (!regs.flags.c && !regs.flags.h) {
-                regs.flags.c = 0;
+            if (!getC() && !getH()) {
+                setC(false);
             }
-            else if (!regs.flags.c && regs.flags.h) {
+            else if (!getC()&& getH()) {
                 regs.a += 0xfa;
-                regs.flags.c = 0;
+                setC(false);
             }
             else {
-                if (!regs.flags.h) {
+                if (!getH()) {
                     regs.a += 0xa0;
                 }
                 else {
                     regs.a += 0x9a;
                 }
-                regs.flags.c = 1;
+                setC(true);
             }
         }
         break;
     case 0x28:
         print_data = pc + (signed char)d8 + op_len[op];
-        if (regs.flags.z) {
+        if (getZ()) {
             pc += (signed char)d8;
             jump_cycles = 4;
         }
@@ -360,11 +371,12 @@ int CPU::exec() {
         break;
     case 0x2f:
         regs.a ^= 0xff;
-        regs.flags.n = regs.flags.h = 1;
+        setN(true);
+        setH(true);
         break;
     case 0x30:
         print_data = pc + (signed char)d8 + op_len[op];
-        if (!regs.flags.c) {
+        if (!getC()) {
             pc += (signed char)d8;
             jump_cycles = 4;
         }
@@ -378,15 +390,15 @@ int CPU::exec() {
         break;
     case 0x34:
         Emulator::write8(regs.hl, Emulator::read8(regs.hl) + 1);
-        regs.flags.z = (Emulator::read8(regs.hl) == 0);
-        regs.flags.n = 0;
-        regs.flags.h = (Emulator::read8(regs.hl) & 0xf) > 9;
+        setZ(Emulator::read8(regs.hl) == 0);
+        setN(false);
+        setH((Emulator::read8(regs.hl) & 0xf) > 9);
         break;
     case 0x35:
         Emulator::write8(regs.hl, Emulator::read8(regs.hl) - 1);
-        regs.flags.z = (Emulator::read8(regs.hl) == 0);
-        regs.flags.n = 1;
-        regs.flags.h = (Emulator::read8(regs.hl) & 0xf) > 9;
+        setZ(Emulator::read8(regs.hl) == 0);
+        setN(true);
+        setH((Emulator::read8(regs.hl) & 0xf) > 9);
         break;
     case 0x36:
         print_data = d8;
@@ -394,7 +406,7 @@ int CPU::exec() {
         break;
     case 0x38:
         print_data = pc + (signed char)d8 + op_len[op];
-        if (regs.flags.c) {
+        if (getC()) {
             pc += (signed char)d8;
             jump_cycles = 4;
         }
@@ -563,7 +575,7 @@ int CPU::exec() {
         cp(regs.b);
         break;
     case 0xc0:
-        if (!regs.flags.z) {
+        if (!getZ()) {
             pop(pc);
             jump = true;
             jump_cycles = 12;
@@ -574,7 +586,7 @@ int CPU::exec() {
         break;
     case 0xc2:
         print_data = d16;
-        if (!regs.flags.z) {
+        if (!getZ()) {
             pc = d16;
             jump = true;
             jump_cycles = 4;
@@ -593,7 +605,7 @@ int CPU::exec() {
         add(regs.a, d8);
         break;
     case 0xc8:
-        if (regs.flags.z) {
+        if (getZ()) {
             pop(pc);
             jump = true;
             jump_cycles = 12;
@@ -605,7 +617,7 @@ int CPU::exec() {
         break;
     case 0xca:
         print_data = d16;
-        if (regs.flags.z) {
+        if (getZ()) {
             pc = d16;
             jump = true;
             jump_cycles = 4;
@@ -620,7 +632,7 @@ int CPU::exec() {
         jump = true;
         break;
     case 0xd0:
-        if (!regs.flags.c) {
+        if (!getC()) {
             pop(pc);
             jump = true;
             jump_cycles = 12;

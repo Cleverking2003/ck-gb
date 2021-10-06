@@ -13,9 +13,9 @@ unsigned char PPU::read8(int addr) {
     case 0xfe00 ... 0xfe9f:
         return m_oam[addr - 0xfe00];
     case 0xff40:
-        return m_lcdc.lcdc;
+        return m_lcdc;
     case 0xff41:
-        return m_stat.stat;
+        return m_stat;
     case 0xff42:
         return m_scy;
     case 0xff43:
@@ -45,11 +45,11 @@ void PPU::write8(int addr, unsigned char val) {
         m_oam[addr - 0xfe00] = val;
         break;
     case 0xff40:
-        m_lcdc.lcdc = val;
+        m_lcdc = val;
         break;
     case 0xff41: {
-        auto old_stat = m_stat.stat;
-        m_stat.stat = (val & 0xf8) | (old_stat & 0x7);
+        auto old_stat = m_stat;
+        m_stat = (val & 0xf8) | (old_stat & 0x7);
         break;
     }
     case 0xff42:
@@ -76,41 +76,45 @@ void PPU::exec(int cycles) {
         m_ly %= 154;
         m_scanline_cycles %= 456;
     }
+    int mode = m_stat & 3;
     if (m_ly >= 144) {
-        if (m_stat.mode != 1) {
-            m_stat.mode = 1;
+        if (mode != 1) {
+            mode = 1;
+            m_stat &= ~3;
+            m_stat |= 1;
             Emulator::raise_int(0);
             std::cout << frames << '\n';
             frames++;
         }
     }
     else if (m_scanline_cycles < 80) {
-        m_stat.mode = 2;
+        m_stat &= ~3;
+        m_stat |= 2;
     }
     else if (m_scanline_cycles < (80 + 172)) {
-        m_stat.mode = 3;
+        m_stat |= 3;
     }
     else {
-        if (m_stat.mode != 0) {
-            m_stat.mode = 0;
+        if (mode != 0) {
+            m_stat &= ~3;
             draw_line();
         }
     }
 }
 
 void PPU::draw_line() {
-    if (!(m_lcdc.lcdc & 0x80)) {
+    if (!(m_lcdc & 0x80)) {
         return;
     }
-    if (m_lcdc.lcdc & 1) {
-        int bg_tiles_base = (m_lcdc.lcdc & 0x10) ? 0x000 : 0x800;
+    if (m_lcdc & 1) {
+        int bg_tiles_base = (m_lcdc & 0x10) ? 0x000 : 0x800;
         int tile_line_offset = ((m_scy + m_ly) % 8) * 2;
-        if (!(m_lcdc.lcdc & 0x10)) {
+        if (!(m_lcdc & 0x10)) {
             tile_line_offset -= 128 * 16;
         }
         for (int x = 0; x < 160; x++) {
             int tile_idx = ((m_scy + m_ly) / 8) * 32 + ((m_scx + x) / 8);
-            int tile = (m_lcdc.lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
+            int tile = (m_lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
             int start_byte = tile * 16 + tile_line_offset;
             auto data = m_vram_tiles[bg_tiles_base + start_byte], 
                 data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];

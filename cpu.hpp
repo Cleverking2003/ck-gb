@@ -27,6 +27,26 @@ private:
     void sla(unsigned char&);
     void srl(unsigned char&);
     void bit(unsigned char, unsigned char);
+    bool getZ() { return regs.f & 0x80; };
+    void setZ(bool val) { 
+        if (val) regs.f |= 0x80;
+        else regs.f &= ~0x80;
+    }
+    bool getN() { return regs.f & 0x40; };
+    void setN(bool val) { 
+        if (val) regs.f |= 0x40;
+        else regs.f &= ~0x40;
+    }
+    bool getH() { return regs.f & 0x20; };
+    void setH(bool val) { 
+        if (val) regs.f |= 0x20;
+        else regs.f &= ~0x20;
+    }
+    bool getC() { return regs.f & 0x10; };
+    void setC(bool val) { 
+        if (val) regs.f |= 0x10;
+        else regs.f &= ~0x10;
+    }
 
     unsigned short pc { 0x100 };
     unsigned short sp { 0 };
@@ -34,14 +54,7 @@ private:
         union {
             unsigned short af;
             struct {
-                struct {
-                    bool z : 1;
-                    bool n : 1;
-                    bool h : 1;
-                    bool c : 1;
-                    int pad : 4;
-                } flags;
-                unsigned char a;
+                unsigned char f, a;
             };
         };
         union {
