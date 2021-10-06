@@ -22,6 +22,8 @@ unsigned char PPU::read8(int addr) {
         return m_scx;
     case 0xff44:
         return m_ly;
+    case 0xff46:
+        return 0;
     case 0xff47:
         return m_bgp;
     default:
@@ -60,6 +62,11 @@ void PPU::write8(int addr, unsigned char val) {
         break;
     case 0xff44:
         m_ly = 0;
+    case 0xff46:
+        for (int i = 0; i < 0xa0; i++) {
+            m_oam[i] = Emulator::read8((val << 8) + i);
+        }
+        break;
     case 0xff47:
         m_bgp = val;
         break;
