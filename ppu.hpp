@@ -7,6 +7,7 @@ public:
     void write8(int addr, unsigned char val);
     void exec(int cycles);
     void draw_line();
+    void draw_sprites();
     sf::Sprite* build_image();
 private:
     unsigned char m_vram_tiles[0x1800] { 0 };
@@ -19,6 +20,8 @@ private:
     unsigned char m_scy { 0 };
     unsigned char m_scx { 0 };
     unsigned char m_bgp { 0 };
+    unsigned char m_obp0 { 0 };
+    unsigned char m_obp1 { 0 };
     int m_scanline_cycles { 0 };
     unsigned char m_screen[144][160][4] { {0} };
     int frames { 0 };

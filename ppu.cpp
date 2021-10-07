@@ -26,6 +26,10 @@ unsigned char PPU::read8(int addr) {
         return 0;
     case 0xff47:
         return m_bgp;
+    case 0xff48:
+        return m_obp0;
+    case 0xff49:
+        return m_obp1;
     default:
         std::cout << "Unimplemented read from " << std::hex << addr << '\n';
         return 0;
@@ -69,6 +73,12 @@ void PPU::write8(int addr, unsigned char val) {
         break;
     case 0xff47:
         m_bgp = val;
+        break;
+    case 0xff48:
+        m_obp0 = val;
+        break;
+    case 0xff49:
+        m_obp1 = val;
         break;
     default:
         std::cout << "Unimplemented write to " << std::hex << addr << '\n';
@@ -130,6 +140,41 @@ void PPU::draw_line() {
             auto color = (m_bgp >> (color_idx * 2)) & 3;
             m_screen[m_ly][x][0] = m_screen[m_ly][x][1] = m_screen[m_ly][x][2] = (3 - color) * 85;
             m_screen[m_ly][x][3] = 255;
+        }
+    }
+    draw_sprites();
+}
+
+void PPU::draw_sprites() {
+    if (!(m_lcdc & 0x1)) return;
+    auto tile_height = (m_lcdc & 0x4) ? 16 : 8;
+    for (int i = 0; i < 40; i++) {
+        auto y = m_oam[i*4];
+        if (y == 0 || y >= 160) continue;
+        y -= 16;
+        if (y > m_ly || (y + tile_height) <= m_ly) continue;
+        auto x = m_oam[i*4+1];
+        if (x == 0 || x >= 168) continue;
+        x -= 8;
+        unsigned char tile;
+        if (tile_height == 8)
+            tile = m_oam[i*4+2];
+        else {
+            if (m_ly > (y + 7)) tile = m_oam[i*4+2] | 1;
+            else tile = m_oam[i*4+2] & 0xfe;
+        }
+        auto attr = m_oam[i*4+3];
+        bool x_flip = attr & 0x20, y_flip = attr & 0x40, prio = attr & 0x80;
+        auto pal = (attr & 0x10) ? m_obp1 : m_obp0;
+        for (int sc_x = 0; sc_x < 8; sc_x++) {
+            auto data = m_vram_tiles[tile*16+(m_ly - y)*2],
+                data2 = m_vram_tiles[tile*16+(m_ly - y)*2 + 1];
+            auto bit_idx = 7 - (sc_x % 8);
+            auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
+            auto color = (pal >> (color_idx * 2)) & 3;
+            if ((x + sc_x) > 159) break;
+            m_screen[m_ly][x+sc_x][0] = m_screen[m_ly][x+sc_x][1] = m_screen[m_ly][x+sc_x][2] = (3 - color) * 85;
+            m_screen[m_ly][x+sc_x][3] = 255;
         }
     }
 }
