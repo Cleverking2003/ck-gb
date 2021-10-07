@@ -4,11 +4,31 @@
 #include <iostream>
 
 bool checkH(unsigned char val, unsigned char val2, bool n) {
-    if (!n)
+    if (!n) {
+        if (((int)val + val2) > 0xff)
+            return true;
         return ((val & 0xf) + (val2 & 0xf)) > 0xf;
-    else
+    }
+    else {
+        if (val < val2)
+            return true;
         return ((signed char)((val & 0xf) - (val2 & 0xf))) < 0;
+    }
 }
+
+bool checkH(unsigned short val, unsigned short val2, bool n) {
+    if (!n) {
+        if (((int)val + val2) > 0xffff)
+            return true;
+        return ((val & 0xf) + (val2 & 0xf)) > 0xf;
+    }
+    else {
+        if (val < val2)
+            return true;
+        return ((signed char)((val & 0xf) - (val2 & 0xf))) < 0;
+    }
+}
+
 
 void CPU::inc(unsigned char& val) {
     setZ((val + 1) == 0);
@@ -34,7 +54,7 @@ void CPU::swap(unsigned char& val) {
 }
 
 void CPU::add(unsigned char& val, unsigned char val2) {
-    setC((val + val2) < max(val, val2));
+    setC(((int)val + val2) > 0xff);
     auto res = val + val2;
     setZ(res == 0);
     setN(false);
@@ -52,21 +72,33 @@ void CPU::sub(unsigned char& val, unsigned char val2) {
 }
 
 void CPU::adc(unsigned char& val, unsigned char val2) {
-    unsigned char res = val + val2 + (getC() ? 1 : 0);
-    setZ(res == 0);
-    setN(false);
-    setH(checkH(val, val2 + (getC() ? 1 : 0), false));
-    setC(res < max(max(val, val2), (unsigned char)(getC() ? 1 : 0)));
-    val = res;
+    bool new_c = false;
+    bool new_h = false;
+    if (getC()) {
+        add(val, 1);
+        new_c = getC();
+        new_h = getH();
+    }
+    add(val, val2);
+    new_c |= getC();
+    new_h |= getH();
+    setC(new_c);
+    setH(new_h);
 }
 
 void CPU::sbc(unsigned char& val, unsigned char val2) {
-    unsigned char res = val - val2 - (getC() ? 1 : 0);
-    setZ(res == 0);
-    setN(true);
-    setH(checkH(val, val2 + (getC() ? 1 : 0), true));
-    setC(val < (val2 + (getC() ? 1 : 0)));
-    val = res;
+    bool new_c = false;
+    bool new_h = false;
+    if (getC()) {
+        sub(val, 1);
+        new_c = getC();
+        new_h = getH();
+    }
+    sub(val, val2);
+    new_c |= getC();
+    new_h |= getH();
+    setC(new_c);
+    setH(new_h);
 }
 
 void CPU::log_and(unsigned char val) {
@@ -203,8 +235,8 @@ int CPU::exec() {
     case 0x09: {
         unsigned short res = regs.hl + regs.bc;
         setN(false);
-        setH(checkH(regs.l, regs.c, false));
-        setC(res < max(regs.hl, regs.bc));
+        setH(checkH(regs.hl, regs.bc, false));
+        setC(((int)regs.hl + regs.bc) > 0xffff);
         regs.hl = res;
         break;
     }
@@ -245,8 +277,8 @@ int CPU::exec() {
     case 0x19: {
         unsigned short res = regs.hl + regs.de;
         setN(false);
-        setH(checkH(regs.l, regs.e, false));
-        setC(res < max(regs.hl, regs.de));
+        setH(checkH(regs.hl, regs.de, false));
+        setC(((int)regs.hl + regs.de) > 0xffff);
         regs.hl = res;
         break;
     }
