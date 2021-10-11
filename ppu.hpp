@@ -22,6 +22,8 @@ private:
     unsigned char m_bgp { 0 };
     unsigned char m_obp0 { 0 };
     unsigned char m_obp1 { 0 };
+    unsigned char m_wy { 0 };
+    unsigned char m_wx { 0 };
     int m_scanline_cycles { 0 };
     unsigned char m_screen[144][160][4] { {0} };
     int frames { 0 };

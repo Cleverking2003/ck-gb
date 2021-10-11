@@ -12,6 +12,7 @@ private:
     void inc(unsigned char&);
     void dec(unsigned char&);
     void add(unsigned char&, unsigned char);
+    void add16(unsigned short&, unsigned short);
     void adc(unsigned char&, unsigned char);
     void sub(unsigned char&, unsigned char);
     void sbc(unsigned char&, unsigned char);
@@ -53,7 +54,7 @@ private:
     }
 
     unsigned short pc { 0x100 };
-    unsigned short sp { 0 };
+    unsigned short sp { 0xfffe };
     struct {
         union {
             unsigned short af;
@@ -79,6 +80,6 @@ private:
                 unsigned char l, h;
             };
         };
-    } regs { 0 };
+    } regs { 0x01b0, 0x0013, 0x00d8, 0x014d };
     bool m_running { true };
 };
