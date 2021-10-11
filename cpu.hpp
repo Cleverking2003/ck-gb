@@ -4,6 +4,8 @@ class CPU {
 public:
     int exec();
     void jump_to(unsigned short addr) { push(pc); pc = addr; }
+    bool running() { return m_running; }
+    void set_running(bool b) { m_running = b; }
 private:
     int exec_cb();
 
@@ -19,6 +21,8 @@ private:
     void cp(unsigned char);
     void rlc(unsigned char&);
     void rrc(unsigned char&);
+    void rl(unsigned char&);
+    void rr(unsigned char&);
     void res(unsigned char&, unsigned char);
     void set(unsigned char&, unsigned char);
     void push(unsigned short);
@@ -76,4 +80,5 @@ private:
             };
         };
     } regs { 0 };
+    bool m_running { true };
 };

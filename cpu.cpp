@@ -5,43 +5,33 @@
 
 bool checkH(unsigned char val, unsigned char val2, bool n) {
     if (!n) {
-        if (((int)val + val2) > 0xff)
-            return true;
         return ((val & 0xf) + (val2 & 0xf)) > 0xf;
     }
     else {
-        if (val < val2)
-            return true;
-        return ((signed char)((val & 0xf) - (val2 & 0xf))) < 0;
+        return (val & 0xf) < (val2 & 0xf);
     }
 }
 
 bool checkH(unsigned short val, unsigned short val2, bool n) {
     if (!n) {
-        if (((int)val + val2) > 0xffff)
-            return true;
         return ((val & 0xf) + (val2 & 0xf)) > 0xf;
     }
     else {
-        if (val < val2)
-            return true;
-        return ((signed char)((val & 0xf) - (val2 & 0xf))) < 0;
+        return (val & 0xf) < (val2 & 0xf);
     }
 }
 
 
 void CPU::inc(unsigned char& val) {
-    setZ((val + 1) == 0);
+    setZ(++val == 0);
     setN(false);
-    setH(checkH(val, 1, false));
-    val++;
+    setH((val & 0xf) == 0);
 }
 
 void CPU::dec(unsigned char& val) {
-    setZ((val - 1) == 0);
+    setZ(--val == 0);
     setN(true);
-    setH(checkH(val, 1, true));
-    val--;
+    setH((val & 0xf) == 0xf);
 }
 
 void CPU::swap(unsigned char& val) {
@@ -153,7 +143,7 @@ void CPU::pop(unsigned short& val) {
 void CPU::rlc(unsigned char& val) {
     unsigned char bit = (val & 0x80) ? 1 : 0;
     val <<= 1;
-    val |= (getC() ? 1 : 0);
+    val |= bit;
     setC(bit);
     setZ(val == 0);
     setN(false);
@@ -161,6 +151,26 @@ void CPU::rlc(unsigned char& val) {
 }
 
 void CPU::rrc(unsigned char& val) {
+    unsigned char bit = val & 1;
+    val >>= 1;
+    val |= bit << 7;
+    setC(bit);
+    setZ(val == 0);
+    setN(false);
+    setH(false);
+}
+
+void CPU::rl(unsigned char& val) {
+    unsigned char bit = (val & 0x80) ? 1 : 0;
+    val <<= 1;
+    val |= (getC() ? 1 : 0);
+    setC(bit);
+    setZ(val == 0);
+    setN(false);
+    setH(false);
+}
+
+void CPU::rr(unsigned char& val) {
     unsigned char bit = val & 1;
     val >>= 1;
     val |= (getC() ? 1 : 0) << 7;
@@ -232,6 +242,10 @@ int CPU::exec() {
         rlc(regs.a);
         setZ(false);
         break;
+    case 0x08:
+        print_data = d16;
+        Emulator::write16(d16, sp);
+        break;
     case 0x09: {
         unsigned short res = regs.hl + regs.bc;
         setN(false);
@@ -256,6 +270,9 @@ int CPU::exec() {
         print_data = d8;
         regs.c = d8;
         break;
+    case 0x10:
+        m_running = false;
+        break;
     case 0x11:
         print_data = d16;
         regs.de = d16;
@@ -265,6 +282,9 @@ int CPU::exec() {
         break;
     case 0x13:
         regs.de++;
+        break;
+    case 0x14:
+        inc(regs.d);
         break;
     case 0x16:
         print_data = d8;
@@ -298,6 +318,10 @@ int CPU::exec() {
         print_data = d8;
         regs.e = d8;
         break;
+    case 0x1f:
+        rr(regs.a);
+        setZ(false);
+        break;
     case 0x20:
         print_data = pc + (signed char)d8 + op_len[op];
         if (!getZ()) {
@@ -314,6 +338,9 @@ int CPU::exec() {
         break;
     case 0x23:
         regs.hl++;
+        break;
+    case 0x24:
+        inc(regs.h);
         break;
     case 0x25:
         dec(regs.h);
@@ -397,6 +424,14 @@ int CPU::exec() {
             jump_cycles = 4;
         }
         break;
+    case 0x29: {
+        unsigned short res = regs.hl + regs.hl;
+        setN(false);
+        setH(checkH(regs.hl, regs.hl, false));
+        setC(((int)regs.hl + regs.hl) > 0xffff);
+        regs.hl = res;
+        break;
+    }
     case 0x2a:
         regs.a = Emulator::read8(regs.hl++);
         break;
@@ -432,6 +467,9 @@ int CPU::exec() {
     case 0x32:
         Emulator::write8(regs.hl--, regs.a);
         break;
+    case 0x33:
+        sp++;
+        break;
     case 0x34: {
         auto val = Emulator::read8(regs.hl);
         Emulator::write8(regs.hl, val + 1);
@@ -459,8 +497,19 @@ int CPU::exec() {
             jump_cycles = 4;
         }
         break;
+    case 0x39: {
+        unsigned short res = regs.hl + sp;
+        setN(false);
+        setH(checkH(regs.hl, sp, false));
+        setC(((int)regs.hl + sp) > 0xffff);
+        regs.hl = res;
+        break;
+    }
     case 0x3a:
         regs.a = Emulator::read8(regs.hl--);
+        break;
+    case 0x3b:
+        sp--;
         break;
     case 0x3c:
         inc(regs.a);
@@ -514,6 +563,9 @@ int CPU::exec() {
     case 0x62:
         regs.h = regs.d;
         break;
+    case 0x66:
+        regs.h = Emulator::read8(regs.hl);
+        break;
     case 0x67:
         regs.h = regs.a;
         break;
@@ -522,6 +574,9 @@ int CPU::exec() {
         break;
     case 0x6b:
         regs.l = regs.e;
+        break;
+    case 0x6e:
+        regs.l = Emulator::read8(regs.hl);
         break;
     case 0x6f:
         regs.l = regs.a;
@@ -607,6 +662,12 @@ int CPU::exec() {
     case 0xa9:
         log_xor(regs.c);
         break;
+    case 0xad:
+        log_xor(regs.l);
+        break;
+    case 0xae:
+        log_xor(Emulator::read8(regs.hl));
+        break;
     case 0xaf:
         log_xor(regs.a);
         break;
@@ -619,6 +680,9 @@ int CPU::exec() {
     case 0xb2:
         log_or(regs.d);
         break;
+    case 0xb6:
+        log_or(Emulator::read8(regs.hl));
+        break;
     case 0xb7:
         log_or(regs.a);
         break;
@@ -627,6 +691,9 @@ int CPU::exec() {
         break;
     case 0xb9:
         cp(regs.c);
+        break;
+    case 0xbb:
+        cp(regs.e);
         break;
     case 0xbe:
         cp(Emulator::read8(regs.hl));
@@ -653,6 +720,15 @@ int CPU::exec() {
         print_data = d16;
         pc = d16;
         jump = true;
+        break;
+    case 0xc4:
+        print_data = d16;
+        if (!getZ()) {
+            push(pc + op_len[op]);
+            pc = d16;
+            jump = true;
+            jump_cycles = 12;
+        }
         break;
     case 0xc5:
         push(regs.bc);
@@ -687,6 +763,10 @@ int CPU::exec() {
         push(pc + op_len[op]);
         pc = d16;
         jump = true;
+        break;
+    case 0xce:
+        print_data = d8;
+        adc(regs.a, d8);
         break;
     case 0xd0:
         if (!getC()) {
@@ -738,6 +818,13 @@ int CPU::exec() {
         print_data = d8;
         log_and(d8);
         break;
+    case 0xe8:
+        print_data = d8;
+        setZ(false);
+        setN(false);
+        setH((sp & 0xf) + (d8 & 0xf) > 9);
+        setC((((int)sp + (signed char)d8) > 0xffff )|| (((int)sp + (signed char)d8) < 0));
+        sp += (signed char)d8;
     case 0xe9:
         pc = regs.hl;
         jump = true;
@@ -772,6 +859,9 @@ int CPU::exec() {
         print_data = d8;
         log_or(d8);
         break;
+    case 0xf9:
+        sp = regs.hl;
+        break;
     case 0xfa:
         print_data = d16;
         regs.a = Emulator::read8(d16);
@@ -795,6 +885,15 @@ int CPU::exec() {
 int CPU::exec_cb() {
     unsigned char op = Emulator::read8(pc + 1);
     switch (op) {
+    case 0x19:
+        rr(regs.c);
+        break;
+    case 0x1a:
+        rr(regs.d);
+        break;
+    case 0x1b:
+        rr(regs.e);
+        break;
     case 0x27:
         sla(regs.a);
         break;
@@ -803,6 +902,9 @@ int CPU::exec_cb() {
         break;
     case 0x37:
         swap(regs.a);
+        break;
+    case 0x38:
+        srl(regs.b);
         break;
     case 0x3f:
         srl(regs.a);

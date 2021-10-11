@@ -69,9 +69,6 @@ unsigned short Emulator::read16(int addr) {
 
 void Emulator::write8(int addr, unsigned char val) {
     switch (addr) {
-    case 0x0000 ... 0x7fff:
-        s_the->m_rom.write8(addr, val);
-        break;
     case 0x8000 ... 0x9fff:
         s_the->m_ppu.write8(addr, val);
         break;
@@ -110,9 +107,14 @@ void Emulator::write16(int addr, unsigned short val) {
 bool Emulator::exec() {
     for (int i = 0; i < 5; i++) {
         if (s_the->m_if & (1 << i)) {
+            s_the->m_cpu.set_running(true);
             raise_int(i);
             break;
         }
+    }
+    if (!s_the->m_cpu.running()) {
+        s_the->m_elapsed_cycles++;
+        return true;
     }
     int cycles = s_the->m_cpu.exec();
     s_the->m_elapsed_cycles += cycles;
