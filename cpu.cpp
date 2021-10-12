@@ -48,16 +48,15 @@ void CPU::add(unsigned char& val, unsigned char val2) {
     setZ(res == 0);
     setN(false);
     setH(((val & 0xf) + (val2 & 0xf)) > 0xf);
-    setC(((int)val + val2) > 0xff);
+    setC(val > (0xff - val2));
     val = res;
 }
 
 void CPU::add16(unsigned short& val, unsigned short val2) {
-    unsigned short res = val + val2;
     setN(false);
     setH(((val & 0xf) + (val2 & 0xf)) > 0xf);
-    setC(((int)val + val2) > 0xffff);
-    val = res;
+    setC(val > (0xffff - val2));
+    val += val2;
 }
 
 void CPU::sub(unsigned char& val, unsigned char val2) {
@@ -277,7 +276,6 @@ int CPU::exec() {
         break;
     case 0x10:
         m_running = false;
-        std::cout << std::hex << pc << '\n';
         break;
     case 0x11:
         print_data = d16;
@@ -948,6 +946,11 @@ int CPU::exec() {
         print_data = d8;
         add(regs.a, d8);
         break;
+    case 0xc7:
+        push(pc + op_len[op]);
+        pc = 0x00;
+        jump = true;
+        break;
     case 0xc8:
         if (getZ()) {
             pop(pc);
@@ -969,6 +972,15 @@ int CPU::exec() {
         break;
     case 0xcb:
         return exec_cb();
+    case 0xcc:
+        print_data = d16;
+        if (getZ()) {
+            push(pc + op_len[op]);
+            pc = d16;
+            jump = true;
+            jump_cycles = 12;
+        }
+        break;
     case 0xcd:
         print_data = d16;
         push(pc + op_len[op]);
@@ -978,6 +990,11 @@ int CPU::exec() {
     case 0xce:
         print_data = d8;
         adc(regs.a, d8);
+        break;
+    case 0xcf:
+        push(pc + op_len[op]);
+        pc = 0x08;
+        jump = true;
         break;
     case 0xd0:
         if (!getC()) {
@@ -989,12 +1006,34 @@ int CPU::exec() {
     case 0xd1:
         pop(regs.de);
         break;
+    case 0xd2:
+        print_data = d16;
+        if (!getC()) {
+            pc = d16;
+            jump = true;
+            jump_cycles += 4;
+        }
+        break;
+    case 0xd4:
+        print_data = d16;
+        if (!getC()) {
+            push(pc + op_len[op]);
+            pc = d16;
+            jump = true;
+            jump_cycles = 12;
+        }
+        break;
     case 0xd5:
         push(regs.de);
         break;
     case 0xd6:
         print_data = d8;
         sub(regs.a, d8);
+        break;
+    case 0xd7:
+        push(pc + op_len[op]);
+        pc = 0x10;
+        jump = true;
         break;
     case 0xd8:
         if (getC()) {
@@ -1008,9 +1047,31 @@ int CPU::exec() {
         pop(pc);
         jump = true;
         break;
+    case 0xda:
+        print_data = d16;
+        if (getC()) {
+            pc = d16;
+            jump = true;
+            jump_cycles += 4;
+        }
+        break;
+    case 0xdc:
+        print_data = d16;
+        if (getC()) {
+            push(pc + op_len[op]);
+            pc = d16;
+            jump = true;
+            jump_cycles = 12;
+        }
+        break;
     case 0xde:
         print_data = d8;
         sbc(regs.a, d8);
+        break;
+    case 0xdf:
+        push(pc + op_len[op]);
+        pc = 0x18;
+        jump = true;
         break;
     case 0xe0:
         print_data = d8;
@@ -1028,6 +1089,11 @@ int CPU::exec() {
     case 0xe6:
         print_data = d8;
         log_and(d8);
+        break;
+    case 0xe7:
+        push(pc + op_len[op]);
+        pc = 0x20;
+        jump = true;
         break;
     case 0xe8:
         print_data = d8;
@@ -1074,13 +1140,18 @@ int CPU::exec() {
         print_data = d8;
         log_or(d8);
         break;
+    case 0xf7:
+        push(pc + op_len[op]);
+        pc = 0x30;
+        jump = true;
+        break;
     case 0xf8: {
         print_data = d8;
         int new_sp = sp + (signed char)d8;
         setZ(false);
         setN(false);
-        setH((regs.hl & 0xf) + (new_sp & 0xf) > 0xf);
-        setC(((int)regs.hl + new_sp) > 0xffff);
+        setH(((regs.hl & 0xf) + (new_sp & 0xf)) > 0xf);
+        setC(regs.hl > (0xffff - new_sp));
         regs.hl = new_sp;
         break;
     }
@@ -1097,6 +1168,11 @@ int CPU::exec() {
     case 0xfe:
         print_data = d8;
         cp(d8);
+        break;
+    case 0xff:
+        push(pc + op_len[op]);
+        pc = 0x38;
+        jump = true;
         break;
     default:
         std::cout << "Unimplemented opcode: " << std::hex << (unsigned)op << " at " << pc << '\n';
@@ -1320,9 +1396,33 @@ int CPU::exec_cb() {
         Emulator::write8(regs.hl, val);
         break;
     }
+    case 0xc6: {
+        auto val = Emulator::read8(regs.hl);
+        set(val, 0);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
+    case 0xce: {
+        auto val = Emulator::read8(regs.hl);
+        set(val, 1);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
     case 0xde: {
         auto val = Emulator::read8(regs.hl);
         set(val, 3);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
+    case 0xe6: {
+        auto val = Emulator::read8(regs.hl);
+        set(val, 4);
+        Emulator::write8(regs.hl, val);
+        break;
+    }
+    case 0xf6: {
+        auto val = Emulator::read8(regs.hl);
+        set(val, 6);
         Emulator::write8(regs.hl, val);
         break;
     }
