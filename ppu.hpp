@@ -17,6 +17,7 @@ private:
     unsigned char m_lcdc { 0x91 };
     unsigned char m_stat { 0 };
     unsigned char m_ly { 0 };
+    unsigned char m_lyc { 0 };
     unsigned char m_scy { 0 };
     unsigned char m_scx { 0 };
     unsigned char m_bgp { 0 };

@@ -151,6 +151,7 @@ void Emulator::raise_int(int interrupt) {
         s_the->m_interrupts_enabled = false;
         s_the->m_if &= ~(1 << interrupt);
         s_the->m_cpu.jump_to(0x40 + interrupt * 8);
+        s_the->m_cpu.set_running(true);
     }
     else {
         s_the->m_if |= (1 << interrupt);

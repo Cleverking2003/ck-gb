@@ -22,6 +22,8 @@ unsigned char PPU::read8(int addr) {
         return m_scx;
     case 0xff44:
         return m_ly;
+    case 0xff45:
+        return m_lyc;
     case 0xff46:
         return 0;
     case 0xff47:
@@ -70,6 +72,10 @@ void PPU::write8(int addr, unsigned char val) {
         break;
     case 0xff44:
         m_ly = 0;
+        break;
+    case 0xff45:
+        m_lyc = val;
+        break;
     case 0xff46:
         for (int i = 0; i < 0xa0; i++) {
             m_oam[i] = Emulator::read8((val << 8) + i);
@@ -103,6 +109,14 @@ void PPU::exec(int cycles) {
         m_ly %= 154;
         m_scanline_cycles %= 456;
     }
+    if (m_ly == m_lyc) {
+        m_stat |= 0x4;
+        if (m_stat & 0x80)
+            Emulator::raise_int(1);
+    }
+    else {
+        m_stat &= ~0x4;
+    }
     int mode = m_stat & 3;
     if (m_ly >= 144) {
         if (mode != 1) {
@@ -110,13 +124,19 @@ void PPU::exec(int cycles) {
             m_stat &= ~3;
             m_stat |= 1;
             Emulator::raise_int(0);
+            if (m_stat & 0x10)
+                Emulator::raise_int(1);
             std::cout << frames << '\n';
             frames++;
         }
     }
     else if (m_scanline_cycles < 80) {
-        m_stat &= ~3;
-        m_stat |= 2;
+        if (mode != 2) {
+            m_stat &= ~3;
+            m_stat |= 2;
+            if (m_stat & 0x20)
+                Emulator::raise_int(1);
+        }
     }
     else if (m_scanline_cycles < (80 + 172)) {
         m_stat |= 3;
@@ -125,6 +145,8 @@ void PPU::exec(int cycles) {
         if (mode != 0) {
             m_stat &= ~3;
             draw_line();
+            if (m_stat & 0x8)
+                Emulator::raise_int(1);
         }
     }
 }
