@@ -112,8 +112,10 @@ bool Emulator::exec() {
             break;
         }
     }
+    //TODO: The clock should be stopped!
     if (!s_the->m_cpu.running()) {
-        s_the->m_elapsed_cycles++;
+        s_the->m_elapsed_cycles += 4;
+        s_the->m_ppu.exec(4);
         return true;
     }
     int cycles = s_the->m_cpu.exec();

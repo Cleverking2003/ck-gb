@@ -206,7 +206,7 @@ void CPU::srl(unsigned char& val) {
 
 void print_op(unsigned char op, unsigned short data = 0) {
     #ifndef DEBUG
-    return;
+    //return;
     #endif
     if (op == 0xcb) printf(cb_format[data]);
     else printf(op_format[op], data);
