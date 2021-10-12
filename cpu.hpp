@@ -30,6 +30,7 @@ private:
     void pop(unsigned short&);
     void swap(unsigned char&);
     void sla(unsigned char&);
+    void sra(unsigned char&);
     void srl(unsigned char&);
     void bit(unsigned char, unsigned char);
     bool getZ() { return regs.f & 0x80; };

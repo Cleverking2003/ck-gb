@@ -53,18 +53,19 @@ void CPU::add(unsigned char& val, unsigned char val2) {
 }
 
 void CPU::add16(unsigned short& val, unsigned short val2) {
+    unsigned short res = val + val2;
     setN(false);
-    setH(((val & 0xf) + (val2 & 0xf)) > 0xf);
+    setH(((val & 0xfff) + (val2 & 0xfff)) > 0xfff);
     setC(val > (0xffff - val2));
-    val += val2;
+    val = res;
 }
 
 void CPU::sub(unsigned char& val, unsigned char val2) {
-    setC(val < val2);
     auto res = val - val2;
     setZ(res == 0);
     setN(true);
-    setH(checkH(val, val2, true));
+    setH((val & 0xf) < (val2 & 0xf));
+    setC(val < val2);
     val = res;
 }
 
@@ -79,18 +80,13 @@ void CPU::adc(unsigned char& val, unsigned char val2) {
 }
 
 void CPU::sbc(unsigned char& val, unsigned char val2) {
-    bool new_c = false;
-    bool new_h = false;
-    if (getC()) {
-        sub(val, 1);
-        new_c = getC();
-        new_h = getH();
-    }
-    sub(val, val2);
-    new_c |= getC();
-    new_h |= getH();
-    setC(new_c);
-    setH(new_h);
+    unsigned char c = getC() ? 1 : 0;
+    unsigned char res = val - val2 - c;
+    setZ(res == 0);
+    setN(true);
+    setH((val & 0xf) < ((val2 & 0xf) + c));
+    setC((val < (val2 + c)) || (val < val2));
+    val = res;
 }
 
 void CPU::log_and(unsigned char val) {
@@ -120,13 +116,23 @@ void CPU::log_xor(unsigned char val) {
 void CPU::cp(unsigned char val) {
     setZ(regs.a == val);
     setN(true);
-    setH(checkH(regs.a, val, true));
+    setH((regs.a & 0xf) < (val & 0xf));
     setC(regs.a < val);
 }
 
 void CPU::sla(unsigned char& val) {
     setC((val & 0x80) != 0);
     val <<= 1;
+    setZ(val == 0);
+    setN(false);
+    setH(false);
+}
+
+void CPU::sra(unsigned char& val) {
+    auto bit = val & 0x80;
+    setC((val & 1) != 0);
+    val >>= 1;
+    val |= bit;
     setZ(val == 0);
     setN(false);
     setH(false);
@@ -206,7 +212,7 @@ void CPU::srl(unsigned char& val) {
 
 void print_op(unsigned char op, unsigned short data = 0) {
     #ifndef DEBUG
-    //return;
+    return;
     #endif
     if (op == 0xcb) printf(cb_format[data]);
     else printf(op_format[op], data);
@@ -356,70 +362,19 @@ int CPU::exec() {
         regs.h = d8;
         break;
     case 0x27: {
-        unsigned char upper = (regs.a & 0xf0) >> 4, lower = regs.a & 0xf;
-        bool n = getN(), h = getH(), c = getC(), new_c = c;
+        bool n = getN(), h = getH(), c = getC(), new_c = false;
         unsigned char addend = 0;
-        if (!n) {
-            if (!c) {
-                if (upper < 10 && lower < 10 && !h) {
-                    addend = 0x00;
-                    new_c = false;
-                }
-                else if (upper < 9 && lower > 9 && !h) {
-                    addend = 0x06;
-                    new_c = false;
-                }
-                else if (upper < 10 && lower < 4 && h) {
-                    addend = 0x06;
-                    new_c = false;
-                }
-                else if (upper > 9 && lower < 9 && !h) {
-                    addend = 0x60;
-                    new_c = true;
-                }
-                else if (upper > 8 && lower > 9 && !h) {
-                    addend = 0x66;
-                    new_c = true;
-                }
-                else if (upper > 8 && lower < 4 && h) {
-                    addend = 0x66;
-                    new_c = true;
-                }
-            }
-            else {
-                if (upper < 3 && lower < 10 && !h) {
-                    addend = 0x60;
-                }
-                else if (upper < 3 && lower > 9 && !h) {
-                    addend = 0x66;
-                }
-                else if (upper < 4 && lower < 4 && h) {
-                    addend = 0x66;
-                }
-                new_c = true;
-            }
+        if ((((regs.a & 0xf) > 9) && !n) || h) {
+            addend |= 0x06;
         }
-        else {
-            if (!c) {
-                if (upper < 10 && lower < 10 && !h) {
-                    addend = 0x00;
-                }
-                else if (upper < 9 && lower > 5 && h) {
-                    addend = 0xfa;
-                }
-                new_c = false;
-            }
-            else {
-                if (upper > 6 && lower < 10 && !h) {
-                    addend = 0xa0;
-                }
-                else if (upper > 5 && lower > 5 && h) {
-                    addend = 0x9a;
-                }
-                new_c = true;
-            }
+        if (((regs.a > 0x99) && !n) || c) {
+            new_c = true;
+            addend |= 0x60;
+
         }
-        regs.a += addend;
+        regs.a += n ? -addend : addend;
+        setZ(regs.a == 0);
+        setH(false);
         setC(new_c);
         break;
     }
@@ -472,19 +427,21 @@ int CPU::exec() {
         sp++;
         break;
     case 0x34: {
-        auto val = Emulator::read8(regs.hl);
-        Emulator::write8(regs.hl, val + 1);
-        setZ((val + 1) == 0);
+        unsigned char val = Emulator::read8(regs.hl);
+        val++;
+        Emulator::write8(regs.hl, val);
+        setZ(val == 0);
         setN(false);
-        setH(checkH(val, 1, false));
+        setH((val & 0xf) == 0);
         break;
     }
     case 0x35: {
-        auto val = Emulator::read8(regs.hl);
-        Emulator::write8(regs.hl, val - 1);
-        setZ((val - 1) == 0);
+        unsigned char val = Emulator::read8(regs.hl);
+        val--;
+        Emulator::write8(regs.hl, val);
+        setZ(val == 0);
         setN(true);
-        setH(checkH(val, 1, true));
+        setH((val & 0xf) == 0xf);
         break;
     }
     case 0x36:
@@ -492,6 +449,8 @@ int CPU::exec() {
         Emulator::write8(regs.hl, d8);
         break;
     case 0x37:
+        setN(false);
+        setH(false);
         setC(true);
         break;
     case 0x38:
@@ -521,7 +480,9 @@ int CPU::exec() {
         regs.a = d8;
         break;
     case 0x3f:
-        setC(false);
+        setN(false);
+        setH(false);
+        setC((getC() ? 1 : 0) ^ 1);
         break;
     case 0x40:
         regs.b = regs.b;
@@ -1099,9 +1060,10 @@ int CPU::exec() {
         print_data = d8;
         setZ(false);
         setN(false);
-        setH((sp & 0xf) + (d8 & 0xf) > 9);
+        setH((sp & 0xfff) + (d8 & 0xfff) > 0xfff);
         setC((((int)sp + (signed char)d8) > 0xffff )|| (((int)sp + (signed char)d8) < 0));
         sp += (signed char)d8;
+        break;
     case 0xe9:
         pc = regs.hl;
         jump = true;
@@ -1147,12 +1109,20 @@ int CPU::exec() {
         break;
     case 0xf8: {
         print_data = d8;
-        int new_sp = sp + (signed char)d8;
+        signed char r8 = d8;
         setZ(false);
         setN(false);
-        setH(((regs.hl & 0xf) + (new_sp & 0xf)) > 0xf);
-        setC(regs.hl > (0xffff - new_sp));
-        regs.hl = new_sp;
+        if (r8 > 0) {
+            setH(((sp & 0xfff) + r8) > 0xfff);
+            setC(sp > (0xffff - r8));
+            regs.hl = sp + r8;
+        }
+        else {
+            r8 = -r8;
+            setH((sp & 0xfff) < r8);
+            setC(sp < r8);
+            regs.hl = sp - r8;
+        }
         break;
     }
     case 0xf9:
@@ -1185,256 +1155,95 @@ int CPU::exec() {
 
 int CPU::exec_cb() {
     unsigned char op = Emulator::read8(pc + 1);
-    switch (op) {
+    unsigned char action = op & 0xf8;
+    unsigned char reg = op & 0x7;
+    unsigned char val;
+    switch (reg) {
     case 0x00:
-        rlc(regs.b);
+        val = regs.b;
         break;
     case 0x01:
-        rlc(regs.c);
+        val = regs.c;
         break;
     case 0x02:
-        rlc(regs.d);
+        val = regs.d;
         break;
     case 0x03:
-        rlc(regs.e);
+        val = regs.e;
         break;
     case 0x04:
-        rlc(regs.h);
+        val = regs.h;
         break;
     case 0x05:
-        rlc(regs.l);
+        val = regs.l;
+        break;
+    case 0x06:
+        val = Emulator::read8(regs.hl);
         break;
     case 0x07:
-        rlc(regs.a);
+        val = regs.a;
+        break;
+    }
+    switch (action) {
+    case 0x00:
+        rlc(val);
         break;
     case 0x08:
-        rrc(regs.b);
-        break;
-    case 0x09:
-        rrc(regs.c);
-        break;
-    case 0x0a:
-        rrc(regs.d);
-        break;
-    case 0x0b:
-        rrc(regs.e);
-        break;
-    case 0x0c:
-        rrc(regs.h);
-        break;
-    case 0x0d:
-        rrc(regs.l);
-        break;
-    case 0x0f:
-        rrc(regs.a);
+        rrc(val);
         break;
     case 0x10:
-        rl(regs.b);
-        break;
-    case 0x11:
-        rl(regs.c);
-        break;
-    case 0x12:
-        rl(regs.d);
-        break;
-    case 0x13:
-        rl(regs.e);
-        break;
-    case 0x14:
-        rl(regs.h);
-        break;
-    case 0x15:
-        rl(regs.l);
-        break;
-    case 0x17:
-        rl(regs.a);
+        rl(val);
         break;
     case 0x18:
-        rr(regs.b);
-        break;
-    case 0x19:
-        rr(regs.c);
-        break;
-    case 0x1a:
-        rr(regs.d);
-        break;
-    case 0x1b:
-        rr(regs.e);
-        break;
-    case 0x1c:
-        rr(regs.h);
-        break;
-    case 0x1d:
-        rr(regs.l);
-        break;
-    case 0x1f:
-        rr(regs.a);
+        rr(val);
         break;
     case 0x20:
-        sla(regs.b);
+        sla(val);
         break;
-    case 0x21:
-        sla(regs.c);
+    case 0x28:
+        sra(val);
         break;
-    case 0x22:
-        sla(regs.d);
-        break;
-    case 0x23:
-        sla(regs.e);
-        break;
-    case 0x24:
-        sla(regs.h);
-        break;
-    case 0x25:
-        sla(regs.l);
-        break;
-    case 0x27:
-        sla(regs.a);
-        break;
-    case 0x33:
-        swap(regs.e);
-        break;
-    case 0x37:
-        swap(regs.a);
+    case 0x30:
+        swap(val);
         break;
     case 0x38:
-        srl(regs.b);
+        srl(val);
         break;
-    case 0x3f:
-        srl(regs.a);
+    case 0x40 ... 0x78:
+        bit(val, (action - 0x40) / 8);
         break;
-    case 0x40:
-        bit(regs.b, 0);
+    case 0x80 ... 0xb8:
+        res(val, (action - 0x80) / 8);
         break;
-    case 0x41:
-        bit(regs.c, 0);
-        break;
-    case 0x42:
-        bit(regs.d, 0);
-        break;
-    case 0x43:
-        bit(regs.e, 0);
-        break;
-    case 0x44:
-        bit(regs.h, 0);
-        break;
-    case 0x45:
-        bit(regs.l, 0);
-        break;
-    case 0x47:
-        bit(regs.a, 0);
-        break;
-    case 0x48:
-        bit(regs.b, 1);
-        break;
-    case 0x50:
-        bit(regs.b, 2);
-        break;
-    case 0x57:
-        bit(regs.a, 2);
-        break;
-    case 0x58:
-        bit(regs.b, 3);
-        break;
-    case 0x5f:
-        bit(regs.a, 3);
-        break;
-    case 0x60:
-        bit(regs.b, 4);
-        break;
-    case 0x61:
-        bit(regs.c, 4);
-        break;
-    case 0x68:
-        bit(regs.b, 5);
-        break;
-    case 0x69:
-        bit(regs.c, 5);
-        break;
-    case 0x6f:
-        bit(regs.a, 5);
-        break;
-    case 0x70:
-        bit(regs.b, 6);
-        break;
-    case 0x71:
-        bit(regs.c, 6);
-        break;
-    case 0x77:
-        bit(regs.a, 6);
-        break;
-    case 0x78:
-        bit(regs.b, 7);
-        break;
-    case 0x79:
-        bit(regs.c, 7);
-        break;
-    case 0x7e:
-        bit(Emulator::read8(regs.hl), 7);
-        break;
-    case 0x7f:
-        bit(regs.a, 7);
-        break;
-    case 0x86: {
-        auto val = Emulator::read8(regs.hl);
-        res(val, 0);
-        Emulator::write8(regs.hl, val);
+    case 0xc0 ... 0xf8:
+        set(val, (action - 0xc0) / 8);
         break;
     }
-    case 0x87:
-        res(regs.a, 0);
+    switch (reg) {
+    case 0x00:
+        regs.b = val;
         break;
-    case 0x9e: {
-        auto val = Emulator::read8(regs.hl);
-        res(val, 3);
+    case 0x01:
+        regs.c = val;
+        break;
+    case 0x02:
+        regs.d = val;
+        break;
+    case 0x03:
+        regs.e = val;
+        break;
+    case 0x04:
+        regs.h = val;
+        break;
+    case 0x05:
+        regs.l = val;
+        break;
+    case 0x06:
         Emulator::write8(regs.hl, val);
         break;
-    }
-    case 0xbe: {
-        auto val = Emulator::read8(regs.hl);
-        res(val, 7);
-        Emulator::write8(regs.hl, val);
+    case 0x07:
+        regs.a = val;
         break;
-    }
-    case 0xc6: {
-        auto val = Emulator::read8(regs.hl);
-        set(val, 0);
-        Emulator::write8(regs.hl, val);
-        break;
-    }
-    case 0xce: {
-        auto val = Emulator::read8(regs.hl);
-        set(val, 1);
-        Emulator::write8(regs.hl, val);
-        break;
-    }
-    case 0xde: {
-        auto val = Emulator::read8(regs.hl);
-        set(val, 3);
-        Emulator::write8(regs.hl, val);
-        break;
-    }
-    case 0xe6: {
-        auto val = Emulator::read8(regs.hl);
-        set(val, 4);
-        Emulator::write8(regs.hl, val);
-        break;
-    }
-    case 0xf6: {
-        auto val = Emulator::read8(regs.hl);
-        set(val, 6);
-        Emulator::write8(regs.hl, val);
-        break;
-    }
-    case 0xfe: {
-        auto val = Emulator::read8(regs.hl);
-        set(val, 7);
-        Emulator::write8(regs.hl, val);
-        break;
-    }
-    default:
-        std::cout << "Unimplemented CB opcode: " << std::hex << (unsigned)op << " at " << pc << '\n';
-        return 0;
     }
     print_op(0xcb, op);
     pc += 2;
