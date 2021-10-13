@@ -176,8 +176,7 @@ void PPU::draw_line() {
             auto bit_idx = 7 - ((m_scx + x) % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (m_bgp >> (color_idx * 2)) & 3;
-            m_screen[m_ly][x][0] = m_screen[m_ly][x][1] = m_screen[m_ly][x][2] = (3 - color) * 85;
-            m_screen[m_ly][x][3] = 255;
+            m_screen[m_ly][x] = color;
         }
     }
     if (m_lcdc & 0x20) {
@@ -194,8 +193,7 @@ void PPU::draw_line() {
             auto bit_idx = 7 - (x % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (m_bgp >> (color_idx * 2)) & 3;
-            m_screen[m_ly][x][0] = m_screen[m_ly][x][1] = m_screen[m_ly][x][2] = (3 - color) * 85;
-            m_screen[m_ly][x][3] = 255;
+            m_screen[m_ly][x] = color;
         }
     }
     if (m_lcdc & 2)
@@ -223,20 +221,28 @@ void PPU::draw_sprites() {
         bool x_flip = attr & 0x20, y_flip = attr & 0x40, prio = attr & 0x80;
         auto pal = (attr & 0x10) ? m_obp1 : m_obp0;
         for (int sc_x = 0; sc_x < 8; sc_x++) {
-            auto data = m_vram_tiles[tile*16+(m_ly - y)*2],
-                data2 = m_vram_tiles[tile*16+(m_ly - y)*2 + 1];
-            auto bit_idx = 7 - (sc_x % 8);
+            auto y_index = (m_ly - y)*2;
+            if (y_flip) y_index = 14 - y_index;
+            auto data = m_vram_tiles[tile*16+y_index],
+                data2 = m_vram_tiles[tile*16+y_index + 1];
+            auto bit_idx = (x_flip) ? sc_x % 8 : 7 - (sc_x % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (pal >> (color_idx * 2)) & 3;
             if ((x + sc_x) > 159) break;
-            m_screen[m_ly][x+sc_x][0] = m_screen[m_ly][x+sc_x][1] = m_screen[m_ly][x+sc_x][2] = (3 - color) * 85;
-            m_screen[m_ly][x+sc_x][3] = 255;
+            if (!prio || m_screen[m_ly][x+sc_x] == 0)
+                m_screen[m_ly][x+sc_x] = color;
         }
     }
 }
 
 sf::Sprite* PPU::build_image() {
-    m_frame.create(160, 144, (sf::Uint8*)m_screen);
+    for (int y = 0; y < 144; y++) {
+        for (int x = 0; x < 160; x++) {
+            m_pixels[(y*160+x)*4] = m_pixels[(y*160+x)*4+1] = m_pixels[(y*160+x)*4+2] = (3 - m_screen[y][x]) * 85;
+            m_pixels[(y*160+x)*4+3] = 255;
+        }
+    }
+    m_frame.create(160, 144, m_pixels);
     m_frame_texture.loadFromImage(m_frame);
     m_frame_sprite.setTexture(m_frame_texture);
     return &m_frame_sprite;

@@ -26,7 +26,8 @@ private:
     unsigned char m_wy { 0 };
     unsigned char m_wx { 0 };
     int m_scanline_cycles { 0 };
-    unsigned char m_screen[144][160][4] { {0} };
+    unsigned char m_screen[144][160] { {0} };
+    sf::Uint8 m_pixels[160 * 144 * 4];
     int frames { 0 };
     sf::Image m_frame;
     sf::Texture m_frame_texture;
