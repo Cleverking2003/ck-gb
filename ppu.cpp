@@ -11,7 +11,10 @@ unsigned char PPU::read8(int addr) {
     case 0x9c00 ... 0x9fff:
         return m_vram_bg_map2[addr - 0x9c00];
     case 0xfe00 ... 0xfe9f:
-        return m_oam[addr - 0xfe00];
+        if (!(m_lcdc & 0x80) || !(m_stat & 0x2))
+            return m_oam[addr - 0xfe00];
+        else
+            return 0xff;
     case 0xff40:
         return m_lcdc;
     case 0xff41:
@@ -54,7 +57,8 @@ void PPU::write8(int addr, unsigned char val) {
         m_vram_bg_map2[addr - 0x9c00] = val;
         break;
     case 0xfe00 ... 0xfe9f:
-        m_oam[addr - 0xfe00] = val;
+        if (!(m_lcdc & 0x80) || !(m_stat & 0x2))
+            m_oam[addr - 0xfe00] = val;
         break;
     case 0xff40:
         m_lcdc = val;
@@ -126,7 +130,7 @@ void PPU::exec(int cycles) {
             Emulator::raise_int(0);
             if (m_stat & 0x10)
                 Emulator::raise_int(1);
-            std::cout << frames << '\n';
+            //std::cout << frames << '\n';
             frames++;
         }
     }

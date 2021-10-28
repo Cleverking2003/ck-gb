@@ -3,6 +3,7 @@
 #include "cpu.hpp"
 #include "ppu.hpp"
 #include "rom.hpp"
+#include "timer.hpp"
 
 class Emulator {
 public:
@@ -27,9 +28,11 @@ private:
     ROM m_rom;
     CPU m_cpu;
     PPU m_ppu;
+    Timer m_timer;
     unsigned char m_wram[0x2000] { 0 };
     unsigned char m_hram[0x7f] { 0 };
-    unsigned char m_joyp { 0xf }, m_if { 0 }, m_ie { 0 };
+    unsigned char m_joyp { 0xf }, m_if { 0 }, m_ie { 0 }, m_div { 0 };
+    int m_div_cycles { 0 };
     bool m_interrupts_enabled { true };
     int m_elapsed_cycles { 0 };
     sf::RenderWindow m_window;

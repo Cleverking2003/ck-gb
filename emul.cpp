@@ -49,6 +49,8 @@ unsigned char Emulator::read8(int addr) {
             else s_the->m_joyp |= 0x1;
         }
         return s_the->m_joyp;
+    case 0xff04 ... 0xff07:
+        return s_the->m_timer.read8(addr);
     case 0xff0f:
         return s_the->m_if;
     case 0xff40 ... 0xff4b:
@@ -80,6 +82,9 @@ void Emulator::write8(int addr, unsigned char val) {
         break;
     case 0xff00:
         s_the->m_joyp = val | 0xf;
+        break;
+    case 0xff04 ... 0xff07:
+        s_the->m_timer.write8(addr, val);
         break;
     case 0xff0f:
         s_the->m_if = val;
@@ -121,6 +126,7 @@ bool Emulator::exec() {
     int cycles = s_the->m_cpu.exec();
     s_the->m_elapsed_cycles += cycles;
     s_the->m_ppu.exec(cycles);
+    s_the->m_timer.exec(cycles);
     return cycles != 0;
 }
 
