@@ -1056,14 +1056,23 @@ int CPU::exec() {
         pc = 0x20;
         jump = true;
         break;
-    case 0xe8:
+    case 0xe8: {
         print_data = d8;
+        signed char r8 = d8;
         setZ(false);
         setN(false);
-        setH((sp & 0xfff) + (d8 & 0xfff) > 0xfff);
-        setC((((int)sp + (signed char)d8) > 0xffff )|| (((int)sp + (signed char)d8) < 0));
-        sp += (signed char)d8;
+        if (r8 > 0) {
+            setH(((sp & 0xf) + (r8 & 0xf)) > 0xf);
+            setC(((sp & 0xff) + r8) > 0xff);
+        }
+        else {
+            d8 = -r8;
+            setH((sp & 0xf) < (d8 & 0xf));
+            setC((sp & 0xff) < d8);
+        }
+        sp += r8;
         break;
+    }
     case 0xe9:
         pc = regs.hl;
         jump = true;
@@ -1113,16 +1122,15 @@ int CPU::exec() {
         setZ(false);
         setN(false);
         if (r8 > 0) {
-            setH(((sp & 0xfff) + r8) > 0xfff);
-            setC(sp > (0xffff - r8));
-            regs.hl = sp + r8;
+            setH(((sp & 0xf) + (r8 & 0xf)) > 0xf);
+            setC(((sp & 0xff) + r8) > 0xff);
         }
         else {
-            r8 = -r8;
-            setH((sp & 0xfff) < r8);
-            setC(sp < r8);
-            regs.hl = sp - r8;
+            d8 = -r8;
+            setH((sp & 0xf) < (d8 & 0xf));
+            setC((sp & 0xff) < d8);
         }
+        regs.hl = sp + r8;
         break;
     }
     case 0xf9:
