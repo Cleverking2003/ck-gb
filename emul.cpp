@@ -71,6 +71,9 @@ unsigned short Emulator::read16(int addr) {
 
 void Emulator::write8(int addr, unsigned char val) {
     switch (addr) {
+    case 0x0000 ... 0x7fff:
+        s_the->m_rom.write8(addr, val);
+        break;
     case 0x8000 ... 0x9fff:
         s_the->m_ppu.write8(addr, val);
         break;
