@@ -130,7 +130,6 @@ void PPU::exec(int cycles) {
             Emulator::raise_int(0);
             if (m_stat & 0x10)
                 Emulator::raise_int(1);
-            //std::cout << frames << '\n';
             frames++;
         }
     }
@@ -159,7 +158,7 @@ void PPU::draw_line() {
     if (!(m_lcdc & 0x80)) {
         return;
     }
-    int bg_tiles_base = (m_lcdc & 0x10) ? 0x000 : 0x800;
+    int bg_tiles_base = (m_lcdc & 0x10) ? 0x000 : 0x1000;
     int end_x;
     if ((m_ly >= m_wy) && (m_lcdc & 0x20))
         end_x = m_wx + 7;
@@ -168,12 +167,13 @@ void PPU::draw_line() {
     if (m_lcdc & 1) {
         int line = (m_scy + m_ly) % 256;
         int tile_line_offset = (line % 8) * 2;
-        if (!(m_lcdc & 0x10)) {
-            tile_line_offset -= 128 * 16;
-        }
         for (int x = 0; x < end_x; x++) {
             int tile_idx = (line / 8) * 32 + ((m_scx + x) / 8);
-            int tile = (m_lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
+            int tile;
+            if (!(m_lcdc & 0x10))
+                tile = (m_lcdc & 8) ? (signed char)m_vram_bg_map2[tile_idx] : (signed char)m_vram_bg_map1[tile_idx];
+            else
+                tile = (m_lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
             int start_byte = tile * 16 + tile_line_offset;
             auto data = m_vram_tiles[bg_tiles_base + start_byte], 
                 data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
@@ -206,36 +206,62 @@ void PPU::draw_line() {
 
 void PPU::draw_sprites() {
     auto tile_height = (m_lcdc & 0x4) ? 16 : 8;
+    char sprites[10] = { 0 };
+    int sprites_x[10] = { 0 };
+    int sprites_y[10] = { 0 };
+    int num_sprites = 0;
     for (int i = 0; i < 40; i++) {
-        auto y = m_oam[i*4];
+        int y = m_oam[i*4];
         if (y == 0 || y >= 160) continue;
         y -= 16;
         if (y > m_ly || (y + tile_height) <= m_ly) continue;
-        auto x = m_oam[i*4+1];
-        if (x == 0 || x >= 168) continue;
-        x -= 8;
-        unsigned char tile;
-        if (tile_height == 8)
-            tile = m_oam[i*4+2];
-        else {
-            if (m_ly > (y + 7)) tile = m_oam[i*4+2] | 1;
-            else tile = m_oam[i*4+2] & 0xfe;
-        }
-        auto attr = m_oam[i*4+3];
-        bool x_flip = attr & 0x20, y_flip = attr & 0x40, prio = attr & 0x80;
-        auto pal = (attr & 0x10) ? m_obp1 : m_obp0;
-        for (int sc_x = 0; sc_x < 8; sc_x++) {
-            auto y_index = (m_ly - y)*2;
-            if (y_flip) y_index = 14 - y_index;
+        sprites[num_sprites] = i;
+        sprites_x[num_sprites] = m_oam[i*4+1] - 8;
+        sprites_y[num_sprites++] = y;
+        if (num_sprites == 10) break;
+    }
+    for (int x = 0; x < 160; x++) {
+        bool have_sprites = false;
+        int color;
+        int previous_x = -9;
+        bool prio;
+        for (int i = 0; i < num_sprites; i++) {
+            if (sprites_x[i] > x || (sprites_x[i] + 7) < x) continue;
+            int sc_x = x - sprites_x[i];
+            int sprite_idx = sprites[i];
+            auto attr = m_oam[sprite_idx*4+3];
+            bool x_flip = attr & 0x20, y_flip = attr & 0x40;
+            auto pal = (attr & 0x10) ? m_obp1 : m_obp0;
+            int y = sprites_y[i];
+            unsigned char tile;
+            if (tile_height == 8) {
+                tile = m_oam[sprite_idx*4+2];
+            }
+            else {
+                if (m_ly > (y + 7)) tile = m_oam[sprite_idx*4+2] | 1;
+                else tile = m_oam[sprite_idx*4+2] & 0xfe;
+            }
+            auto y_index = (m_ly - y) % 8 * 2;
+            if (y_flip) {
+                y_index = 14 - y_index;
+                if (tile_height == 16) {
+                    tile ^= 1;
+                }
+            }
             auto data = m_vram_tiles[tile*16+y_index],
                 data2 = m_vram_tiles[tile*16+y_index + 1];
             auto bit_idx = (x_flip) ? sc_x % 8 : 7 - (sc_x % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
-            auto color = (pal >> (color_idx * 2)) & 3;
-            if ((x + sc_x) > 159) break;
-            if (!prio || m_screen[m_ly][x+sc_x] == 0)
-                m_screen[m_ly][x+sc_x] = color;
+            if (color_idx == 0) continue;
+            if (sprites_x[i] > previous_x) {
+                have_sprites = true;
+                previous_x = sprites_x[i];
+                color = (pal >> (color_idx * 2)) & 3;
+                prio = attr & 0x80;
+            }
         }
+        if (have_sprites && (m_screen[m_ly][x] == 0 || !prio))
+            m_screen[m_ly][x] = color;
     }
 }
 
