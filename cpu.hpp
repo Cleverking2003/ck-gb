@@ -11,11 +11,11 @@ private:
 
     void inc(unsigned char&);
     void dec(unsigned char&);
-    void add(unsigned char&, unsigned char);
+    void add(unsigned char);
     void add16(unsigned short&, unsigned short);
-    void adc(unsigned char&, unsigned char);
-    void sub(unsigned char&, unsigned char);
-    void sbc(unsigned char&, unsigned char);
+    void adc(unsigned char);
+    void sub(unsigned char);
+    void sbc(unsigned char);
     void log_and(unsigned char);
     void log_or(unsigned char);
     void log_xor(unsigned char);

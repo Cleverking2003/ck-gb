@@ -6,12 +6,12 @@ class ROM {
 public:
     bool load(const char* game);
     void unload() { delete m_rom; }
-    unsigned char read8(int addr);
-    void write8(int addr, unsigned char val);
+    unsigned char read8(unsigned short addr);
+    void write8(unsigned short addr, unsigned char val);
     int get_bank() { return m_current_bank; }
     ~ROM() { unload(); }
 private:
-    void mbc1_write(int addr, unsigned char val);
+    void mbc1_write(unsigned short addr, unsigned char val);
 
     unsigned char* m_rom { nullptr };
     int m_size { 0 };

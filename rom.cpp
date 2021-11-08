@@ -2,7 +2,7 @@
 #include <iostream>
 
 // TODO: exram
-void ROM::mbc1_write(int addr, unsigned char val) {
+void ROM::mbc1_write(unsigned short addr, unsigned char val) {
     switch (addr) {
     case 0x0000 ... 0x1fff:
         break;
@@ -39,7 +39,7 @@ bool ROM::load(const char* game) {
     return true;
 }
 
-unsigned char ROM::read8(int addr) {
+unsigned char ROM::read8(unsigned short addr) {
     switch (addr) {
     case 0x0000 ... 0x3fff:
         return m_rom[addr];
@@ -48,7 +48,7 @@ unsigned char ROM::read8(int addr) {
     }
 }
 
-void ROM::write8(int addr, unsigned char val) {
+void ROM::write8(unsigned short addr, unsigned char val) {
     switch (m_mapper_type) {
     case 0x00: break;
     case 0x01:

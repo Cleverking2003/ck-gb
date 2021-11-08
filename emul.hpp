@@ -10,10 +10,10 @@ public:
     static Emulator* create();
     static bool load(const char* game);
     static void unload();
-    static unsigned char read8(int addr);
-    static unsigned short read16(int addr);
-    static void write8(int addr, unsigned char val);
-    static void write16(int addr, unsigned short val);
+    static unsigned char read8(unsigned short addr);
+    static unsigned short read16(unsigned short addr);
+    static void write8(unsigned short addr, unsigned char val);
+    static void write16(unsigned short addr, unsigned short val);
     static void raise_int(int interrupt);
     static void enable_ints();
     static void disable_ints();

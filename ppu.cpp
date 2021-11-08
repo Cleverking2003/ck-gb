@@ -2,7 +2,7 @@
 #include "ppu.hpp"
 #include <iostream>
 
-unsigned char PPU::read8(int addr) {
+unsigned char PPU::read8(unsigned short addr) {
     switch(addr) {
     case 0x8000 ... 0x97ff:
         return m_vram_tiles[addr - 0x8000];
@@ -45,7 +45,7 @@ unsigned char PPU::read8(int addr) {
     }
 }
 
-void PPU::write8(int addr, unsigned char val) {
+void PPU::write8(unsigned short addr, unsigned char val) {
     switch(addr) {
     case 0x8000 ... 0x97ff:
         m_vram_tiles[addr - 0x8000] = val;

@@ -17,7 +17,7 @@ void Emulator::unload() { s_the->m_rom.unload(); }
 void Emulator::enable_ints() { s_the->m_interrupts_enabled = true; }
 void Emulator::disable_ints() { s_the->m_interrupts_enabled = false; }
 
-unsigned char Emulator::read8(int addr) {
+unsigned char Emulator::read8(unsigned short addr) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
         return s_the->m_rom.read8(addr);
@@ -60,16 +60,16 @@ unsigned char Emulator::read8(int addr) {
     case 0xffff:
         return s_the->m_ie;
     default:
-        std::cout << "Unimplemented read from " << std::hex << addr << '\n';
+        //std::cout << "Unimplemented read from " << std::hex << addr << '\n';
         return 0;
     }
 }
 
-unsigned short Emulator::read16(int addr) {
+unsigned short Emulator::read16(unsigned short addr) {
     return (read8(addr + 1) << 8) | read8(addr);
 }
 
-void Emulator::write8(int addr, unsigned char val) {
+void Emulator::write8(unsigned short addr, unsigned char val) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
         s_the->m_rom.write8(addr, val);
@@ -102,12 +102,12 @@ void Emulator::write8(int addr, unsigned char val) {
         s_the->m_ie = val;
         break;
     default:
-        std::cout << "Unimplemented write to " << std::hex << addr << '\n';
+        //std::cout << "Unimplemented write to " << std::hex << addr << '\n';
         break;
     }
 }
 
-void Emulator::write16(int addr, unsigned short val) {
+void Emulator::write16(unsigned short addr, unsigned short val) {
     write8(addr, val & 0xff);
     write8(addr + 1, val >> 8);
 }

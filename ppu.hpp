@@ -3,8 +3,8 @@
 
 class PPU {
 public:
-    unsigned char read8(int addr);
-    void write8(int addr, unsigned char val);
+    unsigned char read8(unsigned short addr);
+    void write8(unsigned short addr, unsigned char val);
     void exec(int cycles);
     void draw_line();
     void draw_sprites();
