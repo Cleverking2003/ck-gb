@@ -39,7 +39,7 @@ const char op_cycles[] = {
 };
 
 const char cb_cycles[] = {
-    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
 };
 
 const char* op_format[] = {
