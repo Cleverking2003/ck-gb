@@ -183,18 +183,19 @@ void PPU::draw_line() {
             m_screen[m_ly][x] = color;
         }
     }
-    if (m_lcdc & 0x20) {
-        int window_line_offset = (m_ly % 8) * 2;
-        if (!(m_lcdc & 0x40)) {
-            window_line_offset -= 128 * 16;
-        }
+    if (m_lcdc & 0x20 && m_wx < 167 && m_wy < 144) {
+        int window_line_offset = ((m_ly - m_wy) % 8) * 2;
         for (int x = end_x; x < 160; x++) {
-            int tile_idx = (m_ly / 8) * 32 + (x / 8);
-            int tile = (m_lcdc & 8) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
+            int tile_idx = ((m_ly - m_wy) / 8) * 32 + ((x - m_wx) / 8);
+            int tile;
+            if (!(m_lcdc & 0x10))
+                tile = (m_lcdc & 0x40) ? (signed char)m_vram_bg_map2[tile_idx] : (signed char)m_vram_bg_map1[tile_idx];
+            else
+                tile = (m_lcdc & 0x40) ? m_vram_bg_map2[tile_idx] : m_vram_bg_map1[tile_idx];
             int start_byte = tile * 16 + window_line_offset;
             auto data = m_vram_tiles[bg_tiles_base + start_byte], 
                 data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
-            auto bit_idx = 7 - (x % 8);
+            auto bit_idx = 7 - ((x - m_wx) % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (m_bgp >> (color_idx * 2)) & 3;
             m_screen[m_ly][x] = color;
