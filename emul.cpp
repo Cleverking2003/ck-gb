@@ -115,8 +115,8 @@ void Emulator::write16(unsigned short addr, unsigned short val) {
 bool Emulator::exec() {
     for (int i = 0; i < 5; i++) {
         if (s_the->m_if & (1 << i)) {
+            s_the->raise_int(i);
             s_the->m_cpu.set_running(true);
-            raise_int(i);
             break;
         }
     }
@@ -161,10 +161,10 @@ void Emulator::raise_int(int interrupt) {
     if (s_the->m_ie & (1 << interrupt) && s_the->m_interrupts_enabled) {
         s_the->m_interrupts_enabled = false;
         s_the->m_if &= ~(1 << interrupt);
-        s_the->m_cpu.jump_to(0x40 + interrupt * 8);
-        s_the->m_cpu.set_running(true);
-    }
-    else {
-        s_the->m_if |= (1 << interrupt);
+        s_the->m_cpu.jump_to(0x40 | (interrupt << 3));
     }
 }
+
+void Emulator::request_int(int interrupt) {
+    s_the->m_if |= (1 << interrupt);
+} 

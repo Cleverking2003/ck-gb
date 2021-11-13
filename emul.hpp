@@ -14,7 +14,7 @@ public:
     static unsigned short read16(unsigned short addr);
     static void write8(unsigned short addr, unsigned char val);
     static void write16(unsigned short addr, unsigned short val);
-    static void raise_int(int interrupt);
+    static void request_int(int interrupt);
     static void enable_ints();
     static void disable_ints();
     static bool exec();
@@ -25,6 +25,7 @@ private:
     Emulator(const Emulator&&) = delete;
     int operator=(const Emulator&) = delete;
     int operator=(const Emulator&&) = delete;
+    void raise_int(int interrupt);
     ROM m_rom;
     CPU m_cpu;
     PPU m_ppu;

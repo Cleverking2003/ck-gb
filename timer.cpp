@@ -48,7 +48,7 @@ void Timer::exec(int cycles) {
         m_tima++;
         if (m_tima == 0) {
             m_tima = m_tma;
-            Emulator::raise_int(2);
+            Emulator::request_int(2);
         }
         m_tima_cycles %= 4194304 / freq[m_tac & 3];
     }

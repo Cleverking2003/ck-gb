@@ -48,13 +48,16 @@ unsigned char PPU::read8(unsigned short addr) {
 void PPU::write8(unsigned short addr, unsigned char val) {
     switch(addr) {
     case 0x8000 ... 0x97ff:
-        m_vram_tiles[addr - 0x8000] = val;
+        if (!(m_lcdc & 0x80) || (m_stat & 0x3) != 0x3)
+            m_vram_tiles[addr - 0x8000] = val;
         break;
     case 0x9800 ... 0x9bff:
-        m_vram_bg_map1[addr - 0x9800] = val;
+        if (!(m_lcdc & 0x80) || (m_stat & 0x3) != 0x3)
+            m_vram_bg_map1[addr - 0x9800] = val;
         break;
     case 0x9c00 ... 0x9fff:
-        m_vram_bg_map2[addr - 0x9c00] = val;
+        if (!(m_lcdc & 0x80) || (m_stat & 0x3) != 0x3)
+            m_vram_bg_map2[addr - 0x9c00] = val;
         break;
     case 0xfe00 ... 0xfe9f:
         if (!(m_lcdc & 0x80) || !(m_stat & 0x2))
@@ -112,14 +115,14 @@ void PPU::exec(int cycles) {
         m_ly++;
         m_ly %= 154;
         m_scanline_cycles %= 456;
-    }
-    if (m_ly == m_lyc) {
-        m_stat |= 0x4;
-        if (m_stat & 0x80)
-            Emulator::raise_int(1);
-    }
-    else {
-        m_stat &= ~0x4;
+        if (m_ly == m_lyc) {
+            m_stat |= 0x4;
+            if (m_stat & 0x40)
+                Emulator::request_int(1);
+        }
+        else {
+            m_stat &= ~0x4;
+        }
     }
     int mode = m_stat & 3;
     if (m_ly >= 144) {
@@ -127,9 +130,9 @@ void PPU::exec(int cycles) {
             mode = 1;
             m_stat &= ~3;
             m_stat |= 1;
-            Emulator::raise_int(0);
+            Emulator::request_int(0);
             if (m_stat & 0x10)
-                Emulator::raise_int(1);
+                Emulator::request_int(1);
             frames++;
         }
     }
@@ -138,7 +141,7 @@ void PPU::exec(int cycles) {
             m_stat &= ~3;
             m_stat |= 2;
             if (m_stat & 0x20)
-                Emulator::raise_int(1);
+                Emulator::request_int(1);
         }
     }
     else if (m_scanline_cycles < (80 + 172)) {
@@ -149,7 +152,7 @@ void PPU::exec(int cycles) {
             m_stat &= ~3;
             draw_line();
             if (m_stat & 0x8)
-                Emulator::raise_int(1);
+                Emulator::request_int(1);
         }
     }
 }
@@ -161,14 +164,15 @@ void PPU::draw_line() {
     int bg_tiles_base = (m_lcdc & 0x10) ? 0x000 : 0x1000;
     int end_x;
     if ((m_ly >= m_wy) && (m_lcdc & 0x20))
-        end_x = m_wx + 7;
+        end_x = m_wx - 7;
     else
         end_x = 160;
     if (m_lcdc & 1) {
         int line = (m_scy + m_ly) % 256;
         int tile_line_offset = (line % 8) * 2;
         for (int x = 0; x < end_x; x++) {
-            int tile_idx = (line / 8) * 32 + ((m_scx + x) / 8);
+            int cur_x = (m_scx + x) % 256;
+            int tile_idx = (line / 8) * 32 + (cur_x / 8);
             int tile;
             if (!(m_lcdc & 0x10))
                 tile = (m_lcdc & 8) ? (signed char)m_vram_bg_map2[tile_idx] : (signed char)m_vram_bg_map1[tile_idx];
@@ -177,7 +181,7 @@ void PPU::draw_line() {
             int start_byte = tile * 16 + tile_line_offset;
             auto data = m_vram_tiles[bg_tiles_base + start_byte], 
                 data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
-            auto bit_idx = 7 - ((m_scx + x) % 8);
+            auto bit_idx = 7 - (cur_x % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (m_bgp >> (color_idx * 2)) & 3;
             m_screen[m_ly][x] = color;
@@ -186,7 +190,7 @@ void PPU::draw_line() {
     if (m_lcdc & 0x20 && m_wx < 167 && m_wy < 144) {
         int window_line_offset = ((m_ly - m_wy) % 8) * 2;
         for (int x = end_x; x < 160; x++) {
-            int tile_idx = ((m_ly - m_wy) / 8) * 32 + ((x - m_wx) / 8);
+            int tile_idx = ((m_ly - m_wy) / 8) * 32 + ((x - (m_wx - 7)) / 8);
             int tile;
             if (!(m_lcdc & 0x10))
                 tile = (m_lcdc & 0x40) ? (signed char)m_vram_bg_map2[tile_idx] : (signed char)m_vram_bg_map1[tile_idx];
@@ -195,7 +199,7 @@ void PPU::draw_line() {
             int start_byte = tile * 16 + window_line_offset;
             auto data = m_vram_tiles[bg_tiles_base + start_byte], 
                 data2 = m_vram_tiles[bg_tiles_base + start_byte + 1];
-            auto bit_idx = 7 - ((x - m_wx) % 8);
+            auto bit_idx = 7 - ((x - (m_wx - 7)) % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             auto color = (m_bgp >> (color_idx * 2)) & 3;
             m_screen[m_ly][x] = color;
@@ -224,7 +228,7 @@ void PPU::draw_sprites() {
     for (int x = 0; x < 160; x++) {
         bool have_sprites = false;
         int color;
-        int previous_x = -9;
+        int previous_x = 256;
         bool prio;
         for (int i = 0; i < num_sprites; i++) {
             if (sprites_x[i] > x || (sprites_x[i] + 7) < x) continue;
@@ -254,7 +258,7 @@ void PPU::draw_sprites() {
             auto bit_idx = (x_flip) ? sc_x % 8 : 7 - (sc_x % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             if (color_idx == 0) continue;
-            if (sprites_x[i] > previous_x) {
+            if (sprites_x[i] < previous_x) {
                 have_sprites = true;
                 previous_x = sprites_x[i];
                 color = (pal >> (color_idx * 2)) & 3;

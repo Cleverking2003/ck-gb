@@ -191,13 +191,13 @@ void CPU::srl(unsigned char& val) {
     setH(false);
 }
 
-void print_op(unsigned char op, unsigned short data = 0) {
-    #ifndef DEBUG
-    return;
-    #endif
+void print_op(unsigned char op, unsigned short pc, unsigned short data = 0) {
+    #ifdef DEBUG
+    printf("%x: ", pc);
     if (op == 0xcb) printf(cb_format[data]);
     else printf(op_format[op], data);
     printf("\n");
+    #endif
 }
 
 int CPU::exec() {
@@ -214,6 +214,9 @@ int CPU::exec() {
     unsigned short regs16_stack[] = { regs.bc, regs.de, regs.hl, regs.af };
     unsigned short* reg16_stack_refs[] = { &regs.bc, &regs.de, &regs.hl, &regs.af };
     bool jump_flags[] = { !getZ(), getZ(), true, !getC(), getC(), true };
+
+    unsigned short insn_pc = pc;
+
     switch (op) {
     case 0x00:
         break;
@@ -395,7 +398,7 @@ int CPU::exec() {
     case 0x3f:
         setN(false);
         setH(false);
-        setC((getC() ? 1 : 0) ^ 1);
+        setC(!getC());
         break;
     case 0x40 ... 0x7f: {
         if (op == 0x76) {
@@ -441,7 +444,9 @@ int CPU::exec() {
             jump = true;
             if (!(op & 1)) jump_cycles = 12;
         }
-        if (op == 0xd9) Emulator::enable_ints();
+        if (op == 0xd9) {
+            Emulator::enable_ints();
+        }
         break;
     }
     case 0xc1: case 0xd1:
@@ -565,16 +570,21 @@ int CPU::exec() {
         return 0;
     }
     if (!jump) pc += op_len[op];
-    print_op(op, print_data);
+    print_op(op, insn_pc, print_data);
     return op_cycles[op] + jump_cycles;
 }
 
 int CPU::exec_cb() {
+    unsigned short insn_pc = pc;
     auto op = Emulator::read8(pc + 1);
     auto action = op & 0xf8, reg = op & 0x7, bit_num = (op & 0x38) >> 3;
     unsigned char regs8[] = { regs.b, regs.c, regs.d, regs.e, regs.h, regs.l, Emulator::read8(regs.hl), regs.a };
     unsigned char* reg_refs[] = { &regs.b, &regs.c, &regs.d, &regs.e, &regs.h, &regs.l, nullptr, &regs.a };
     auto val = regs8[reg];
+
+    pc += 2;
+    print_op(0xcb, insn_pc, op);
+
     switch (action) {
     case 0x00:
         rlc(val);
@@ -602,7 +612,7 @@ int CPU::exec_cb() {
         break;
     case 0x40 ... 0x78:
         bit(val, bit_num);
-        break;
+        return cb_cycles[op & 0xf];
     case 0x80 ... 0xb8:
         res(val, bit_num);
         break;
@@ -618,7 +628,5 @@ int CPU::exec_cb() {
         *reg_refs[reg] = val;
         break;
     }
-    print_op(0xcb, op);
-    pc += 2;
     return cb_cycles[op & 0xf];
 }
