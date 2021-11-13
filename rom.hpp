@@ -12,6 +12,8 @@ public:
     ~ROM() { unload(); }
 private:
     void mbc1_write(unsigned short addr, unsigned char val);
+    void mbc3_write(unsigned short addr, unsigned char val);
+    void mbc5_write(unsigned short addr, unsigned char val);
 
     unsigned char* m_rom { nullptr };
     int m_size { 0 };
