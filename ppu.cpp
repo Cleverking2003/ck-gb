@@ -229,6 +229,7 @@ void PPU::draw_sprites() {
         bool have_sprites = false;
         int color;
         int previous_x = 256;
+        int previous = 11;
         bool prio;
         for (int i = 0; i < num_sprites; i++) {
             if (sprites_x[i] > x || (sprites_x[i] + 7) < x) continue;
@@ -258,9 +259,10 @@ void PPU::draw_sprites() {
             auto bit_idx = (x_flip) ? sc_x % 8 : 7 - (sc_x % 8);
             auto color_idx = ((data >> bit_idx) & 1) | (((data2 >> bit_idx) & 1) << 1);
             if (color_idx == 0) continue;
-            if (sprites_x[i] < previous_x) {
+            if ((sprites_x[i] < previous_x) || (sprites_x[i] == previous_x && i < previous)) {
                 have_sprites = true;
                 previous_x = sprites_x[i];
+                previous = i;
                 color = (pal >> (color_idx * 2)) & 3;
                 prio = attr & 0x80;
             }
