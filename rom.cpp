@@ -5,6 +5,7 @@
 void ROM::mbc1_write(unsigned short addr, unsigned char val) {
     switch (addr) {
     case 0x0000 ... 0x1fff:
+        m_enable_exram = (val & 0xf) == 0xa;
         break;
     case 0x2000 ... 0x3fff:
         m_current_bank = val & 0x1f;
@@ -15,9 +16,17 @@ void ROM::mbc1_write(unsigned short addr, unsigned char val) {
             m_current_bank &= 0x1f;
             m_current_bank |= (val & 3) << 5;
         }
+        else {
+            if (val <= 3) m_exram_bank = val;
+        }
         break;
     case 0x6000 ... 0x7fff:
         m_mode_select = val;
+        break;
+    case 0xa000 ... 0xbfff:
+        if (m_enable_exram) {
+            m_exram[(m_exram_bank * 0x2000) + (addr - 0xa000)] = val;
+        }
         break;
     }
 }
@@ -26,14 +35,21 @@ void ROM::mbc1_write(unsigned short addr, unsigned char val) {
 void ROM::mbc3_write(unsigned short addr, unsigned char val) {
     switch (addr) {
     case 0x0000 ... 0x1fff:
+        m_enable_exram = (val & 0xf) == 0xa;
         break;
     case 0x2000 ... 0x3fff:
         m_current_bank = val & 0x7f;
         if (m_current_bank == 0) m_current_bank++;
         break;
     case 0x4000 ... 0x5fff:
+        if (val <= 3) m_exram_bank = val;
         break;
     case 0x6000 ... 0x7fff:
+        break;
+    case 0xa000 ... 0xbfff:
+        if (m_enable_exram) {
+            m_exram[(m_exram_bank * 0x2000) + (addr - 0xa000)] = val;
+        }
         break;
     }
 }
@@ -74,6 +90,25 @@ bool ROM::load(const char* game) {
         std::cout << "Mapper type 0x" << std::hex << m_mapper_type << " is unsupported\n";
         return false;
     }
+    switch (m_rom[0x149]) {
+    case 0x02:
+        m_exram_size = 1;
+        break;
+    case 0x03:
+        m_exram_size = 4;
+        break;
+    case 0x04:
+        m_exram_size = 16;
+        break;
+    case 0x05:
+        m_exram_size = 8;
+        break;
+    default:
+        m_exram_size = 0;
+        break;
+    }
+    m_exram_size *= 0x2000;
+    if (m_exram_size) m_exram = new unsigned char[m_exram_size];
     return true;
 }
 
@@ -83,6 +118,11 @@ unsigned char ROM::read8(unsigned short addr) {
         return m_rom[addr];
     case 0x4000 ... 0x7fff:
         return m_rom[addr + (m_current_bank - 1) * 0x4000];
+    case 0xa000 ... 0xbfff:
+        if (m_enable_exram) {
+            return m_exram[(m_exram_bank * 0x2000) + (addr - 0xa000)];
+        }
+        return 0;
     }
 }
 

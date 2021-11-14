@@ -20,6 +20,7 @@ void Emulator::disable_ints() { s_the->m_interrupts_enabled = false; }
 unsigned char Emulator::read8(unsigned short addr) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
+    case 0xa000 ... 0xbfff:
         return s_the->m_rom.read8(addr);
     case 0x8000 ... 0x9fff:
         return s_the->m_ppu.read8(addr);
@@ -72,6 +73,7 @@ unsigned short Emulator::read16(unsigned short addr) {
 void Emulator::write8(unsigned short addr, unsigned char val) {
     switch (addr) {
     case 0x0000 ... 0x7fff:
+    case 0xa000 ... 0xbfff:
         s_the->m_rom.write8(addr, val);
         break;
     case 0x8000 ... 0x9fff:
