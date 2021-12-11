@@ -6,10 +6,10 @@ public:
     unsigned char read8(unsigned short addr);
     void write8(unsigned short addr, unsigned char val);
     void exec(int cycles);
+private:
     void draw_line();
     void draw_sprites();
-    sf::Sprite* build_image();
-private:
+
     unsigned char m_vram_tiles[0x1800] { 0 };
     unsigned char m_vram_bg_map1[0x400] { 0 };
     unsigned char m_vram_bg_map2[0x400] { 0 };

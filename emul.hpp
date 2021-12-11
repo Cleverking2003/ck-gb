@@ -17,7 +17,8 @@ public:
     static void request_int(int interrupt);
     static void enable_ints();
     static void disable_ints();
-    static bool exec();
+    static void draw(sf::Sprite& screen);
+    static void exec();
     static void run();
 private:
     Emulator() {}
@@ -37,4 +38,5 @@ private:
     bool m_interrupts_enabled { true };
     int m_elapsed_cycles { 0 };
     sf::RenderWindow m_window;
+    bool m_running { true };
 };

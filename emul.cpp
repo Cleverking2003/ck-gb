@@ -61,7 +61,6 @@ unsigned char Emulator::read8(unsigned short addr) {
     case 0xffff:
         return s_the->m_ie;
     default:
-        //std::cout << "Unimplemented read from " << std::hex << addr << '\n';
         return 0;
     }
 }
@@ -104,7 +103,6 @@ void Emulator::write8(unsigned short addr, unsigned char val) {
         s_the->m_ie = val;
         break;
     default:
-        //std::cout << "Unimplemented write to " << std::hex << addr << '\n';
         break;
     }
 }
@@ -114,7 +112,7 @@ void Emulator::write16(unsigned short addr, unsigned short val) {
     write8(addr + 1, val >> 8);
 }
 
-bool Emulator::exec() {
+void Emulator::exec() {
     for (int i = 0; i < 5; i++) {
         if (s_the->m_if & (1 << i)) {
             s_the->raise_int(i);
@@ -122,35 +120,37 @@ bool Emulator::exec() {
             break;
         }
     }
-    //TODO: The clock should be stopped!
+
     if (!s_the->m_cpu.running()) {
-        s_the->m_elapsed_cycles += 4;
         s_the->m_ppu.exec(4);
-        return true;
+        s_the->m_timer.exec(4);
+        return;
     }
+
     int cycles = s_the->m_cpu.exec();
     s_the->m_elapsed_cycles += cycles;
     s_the->m_ppu.exec(cycles);
     s_the->m_timer.exec(cycles);
-    return cycles != 0;
+}
+
+void Emulator::draw(sf::Sprite& screen) {
+        sf::Event e;
+        while(s_the->m_window.pollEvent(e)) {
+            if (e.type == sf::Event::Closed) {
+                s_the->m_window.close();
+                s_the->m_running = false;
+                return;
+            }
+        }
+        s_the->m_window.clear(sf::Color::White);
+        s_the->m_window.draw(screen);
+        s_the->m_window.display();
+        sf::sleep(sf::milliseconds(16));
 }
 
 void Emulator::run() {
-    while (Emulator::exec()) {
-        if (s_the->m_elapsed_cycles > 4194304 / 60) {
-            s_the->m_elapsed_cycles -= 4194304 / 60;
-            sf::Event e;
-            while(s_the->m_window.pollEvent(e)) {
-                if (e.type == sf::Event::Closed) {
-                    s_the->m_window.close();
-                    return;
-                }
-            }
-            s_the->m_window.clear(sf::Color::White);
-            s_the->m_window.draw(*s_the->m_ppu.build_image());
-            s_the->m_window.display();
-            sf::sleep(sf::milliseconds(16));
-        }
+    while (s_the->m_running) {
+        Emulator::exec();
     }
 }
 
